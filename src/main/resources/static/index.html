@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VentasPost — Gestión Integral Polirubro Multi-Sucursal</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <!-- NOTIFICACIONES GLOBALES -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- VISTA 1: LOGIN -->
+    <section id="view-login" class="auth-wrapper hidden">
+        <div class="auth-card">
+            <div class="brand-header">
+                <div class="brand-logo">VP</div>
+                <div>
+                    <h1>VentasPost</h1>
+                    <p>Sistema Integral Polirubro Multi-Sucursal</p>
+                </div>
+            </div>
+            <form id="form-login" autocomplete="off">
+                <div class="form-group">
+                    <label for="login-username">Usuario</label>
+                    <input type="text" id="login-username" required maxlength="60" placeholder="Ej: admin">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" required maxlength="128" placeholder="••••••••">
+                </div>
+                <div id="login-error" class="alert-error hidden"></div>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-login">Ingresar al Sistema</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- VISTA 1.5: CAMBIO OBLIGATORIO DE CONTRASEÑA (Regla 4.2) -->
+    <section id="view-change-password" class="auth-wrapper hidden">
+        <div class="auth-card">
+            <h2>Elegir Nueva Contraseña</h2>
+            <p class="subtitle" style="margin-bottom:1.25rem;">
+                Por seguridad, debe establecer su contraseña personal (mínimo 6 caracteres) antes de comenzar a operar.
+            </p>
+            <form id="form-change-password" autocomplete="off">
+                <div class="form-group">
+                    <label for="cp-actual">Contraseña Actual / Temporal *</label>
+                    <input type="password" id="cp-actual" required minlength="6" maxlength="128">
+                </div>
+                <div class="form-group">
+                    <label for="cp-nueva">Nueva Contraseña Personal (mín. 6 caracteres) *</label>
+                    <input type="password" id="cp-nueva" required minlength="6" maxlength="128">
+                </div>
+                <div class="form-group">
+                    <label for="cp-confirmar">Confirmar Nueva Contraseña *</label>
+                    <input type="password" id="cp-confirmar" required minlength="6" maxlength="128">
+                </div>
+                <div id="cp-error" class="alert-error hidden"></div>
+                <div style="display:flex;gap:0.75rem;">
+                    <button type="button" id="btn-cancel-cp" class="btn btn-outline" style="flex:1;">Salir</button>
+                    <button type="submit" class="btn btn-primary" style="flex:2;">Guardar Contraseña</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- VISTA 2: SELECCIÓN DE SUCURSAL O VISTA CONSOLIDADA (Reglas 2B y 2.1A) -->
+    <section id="view-select-sucursal" class="auth-wrapper hidden">
+        <div class="auth-card wide">
+            <h2>Seleccionar Contexto de Operación</h2>
+            <p class="subtitle">Elija una sucursal específica para operar o active la Vista Consolidada (si está habilitada para su perfil):</p>
+            <div id="sucursales-selector-list" class="branch-grid"></div>
+            <div class="auth-footer">
+                <button type="button" id="btn-logout-from-selector" class="btn btn-outline">Cerrar Sesión</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- VISTA 3: LAYOUT PRINCIPAL DEL SISTEMA -->
+    <div id="view-app" class="app-layout hidden">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo small">VP</div>
+                <span>VentasPost</span>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" id="nav-btn-sucursales" data-section="sucursales">
+                    <span>🏢 Sucursales y Datos Fiscales</span>
+                </button>
+                <button class="nav-item hidden" id="nav-btn-usuarios" data-section="usuarios">
+                    <span>👥 Usuarios, Roles y Permisos</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-summary">
+                    <strong id="ui-user-fullname">-</strong>
+                    <span id="ui-user-roles" class="role-badges"></span>
+                </div>
+                <button type="button" id="btn-open-self-password" class="btn btn-outline-light btn-sm">Cambiar Mi Clave</button>
+                <button type="button" id="btn-logout" class="btn btn-danger-outline btn-sm">Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <div class="main-area">
+            <header class="topbar">
+                <div class="active-branch-banner">
+                    <span class="badge-label">Contexto Activo:</span>
+                    <strong id="ui-active-branch-name">-</strong>
+                    <span id="ui-active-branch-pv" class="pv-pill">PV -</span>
+                    <button type="button" id="btn-switch-branch" class="btn btn-outline btn-xs hidden">Cambiar Contexto / Sucursal</button>
+                </div>
+                <div class="topbar-meta">
+                    <button type="button" id="btn-test-supervisor" class="btn btn-outline btn-xs">🔐 Validar Supervisor (POS)</button>
+                    <span>AR (UTC-3)</span>
+                </div>
+            </header>
+
+            <main class="content-container">
+                <!-- SECCIÓN A: SUCURSALES -->
+                <div id="section-sucursales">
+                    <div class="page-header">
+                        <div>
+                            <h2>Gestión de Sucursales y Configuración Fiscal (ARCA)</h2>
+                            <p>Administración de locales comerciales, unicidad CUIT + Punto de Venta ARCA y estado operativo.</p>
+                        </div>
+                        <button type="button" id="btn-nueva-sucursal" class="btn btn-primary hidden">+ Nueva Sucursal</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Razón Social / CUIT</th>
+                                        <th>Condición IVA</th>
+                                        <th>Pto. Venta ARCA</th>
+                                        <th>Modalidad</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-sucursales">
+                                    <tr>
+                                        <td colspan="8" class="text-center">Cargando sucursales...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN B: USUARIOS, ROLES Y PERMISOS GRANULARES -->
+                <div id="section-usuarios" class="hidden">
+                    <div class="page-header">
+                        <div>
+                            <h2>Gestión de Empleados, Roles y Permisos Granulares</h2>
+                            <p>Asignación multi-rol, sucursales habilitadas, permisos granulares y desbloqueo de cuentas.</p>
+                        </div>
+                        <button type="button" id="btn-nuevo-usuario" class="btn btn-primary">+ Nuevo Empleado</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario / Legajo</th>
+                                        <th>Apellido y Nombre</th>
+                                        <th>DNI / Contacto</th>
+                                        <th>Roles Asignados</th>
+                                        <th>Sucursales</th>
+                                        <th>Seguridad / Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-usuarios">
+                                    <tr>
+                                        <td colspan="7" class="text-center">Cargando empleados...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL CREAR / EDITAR SUCURSAL -->
+    <div id="modal-sucursal" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-sucursal-title">Nueva Sucursal</h3>
+                <button type="button" id="btn-close-modal" class="btn-icon">✕</button>
+            </div>
+            <form id="form-sucursal">
+                <input type="hidden" id="suc-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="suc-codigo">Código Interno *</label>
+                        <input type="text" id="suc-codigo" required maxlength="30" placeholder="Ej: SUC-002">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-nombre">Nombre Comercial *</label>
+                        <input type="text" id="suc-nombre" required maxlength="120" placeholder="Ej: Sucursal Centro">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-razon-social">Razón Social *</label>
+                        <input type="text" id="suc-razon-social" required maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-cuit">CUIT *</label>
+                        <input type="text" id="suc-cuit" required maxlength="13" placeholder="30-12345678-9">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-condicion-iva">Condición frente al IVA *</label>
+                        <select id="suc-condicion-iva" required>
+                            <option value="RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto</option>
+                            <option value="MONOTRIBUTO">Responsable Monotributo</option>
+                            <option value="EXENTO">IVA Sujeto Exento</option>
+                            <option value="CONSUMIDOR_FINAL">Consumidor Final</option>
+                            <option value="NO_RESPONSABLE">IVA No Responsable</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-pv-arca">Punto de Venta ARCA (1 - 99999) *</label>
+                        <input type="number" id="suc-pv-arca" required min="1" max="99999" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-iibb">N° Ingresos Brutos</label>
+                        <input type="text" id="suc-iibb" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-inicio-act">Inicio de Actividades</label>
+                        <input type="date" id="suc-inicio-act">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="suc-direccion">Domicilio Comercial *</label>
+                        <input type="text" id="suc-direccion" required maxlength="255">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-localidad">Localidad</label>
+                        <input type="text" id="suc-localidad" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-provincia">Provincia</label>
+                        <input type="text" id="suc-provincia" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-telefono">Teléfono</label>
+                        <input type="text" id="suc-telefono" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="suc-email">Email</label>
+                        <input type="email" id="suc-email" maxlength="120">
+                    </div>
+                    <div class="form-group checkbox-row full-width">
+                        <label><input type="checkbox" id="suc-vende-publico" checked> Vende al Público</label>
+                        <label><input type="checkbox" id="suc-tiene-deposito" checked> Tiene Depósito en el Local</label>
+                        <label><input type="checkbox" id="suc-casa-central"> Es Casa Central</label>
+                    </div>
+                </div>
+                <div id="modal-sucursal-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Sucursal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CREAR / EDITAR EMPLEADO (Reglas 1.1B, 3.1B, 3.2, 4.1A, 4.2) -->
+    <div id="modal-usuario" class="modal-backdrop hidden">
+        <div class="modal-card wide">
+            <div class="modal-header">
+                <h3 id="modal-usuario-title">Nuevo Empleado</h3>
+                <button type="button" id="btn-close-usuario-modal" class="btn-icon">✕</button>
+            </div>
+            <form id="form-usuario" autocomplete="off">
+                <input type="hidden" id="usr-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="usr-username">Nombre de Usuario (Login) *</label>
+                        <input type="text" id="usr-username" required minlength="3" maxlength="60" placeholder="Ej: jperez">
+                    </div>
+                    <div class="form-group" id="group-usr-password">
+                        <label for="usr-password">Contraseña Inicial (mín. 6 caracteres) *</label>
+                        <input type="password" id="usr-password" minlength="6" maxlength="128" placeholder="El empleado deberá cambiarla al ingresar">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-nombre">Nombre *</label>
+                        <input type="text" id="usr-nombre" required maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-apellido">Apellido *</label>
+                        <input type="text" id="usr-apellido" required maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-dni">DNI / CUIL (Obligatorio) *</label>
+                        <input type="text" id="usr-dni" required minlength="7" maxlength="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-legajo">Legajo (Opcional)</label>
+                        <input type="text" id="usr-legajo" maxlength="40">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-telefono">Teléfono (Opcional)</label>
+                        <input type="text" id="usr-telefono" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-email">Email (Opcional)</label>
+                        <input type="email" id="usr-email" maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-direccion">Dirección (Opcional)</label>
+                        <input type="text" id="usr-direccion" maxlength="255">
+                    </div>
+                    <div class="form-group">
+                        <label for="usr-fecha-ingreso">Fecha de Ingreso (Opcional)</label>
+                        <input type="date" id="usr-fecha-ingreso">
+                    </div>
+
+                    <!-- ROLES ACUMULABLES -->
+                    <div class="form-group full-width">
+                        <label>Roles Asignados (puede seleccionar más de uno) *</label>
+                        <div id="usr-roles-container" class="check-grid"></div>
+                    </div>
+
+                    <!-- SUCURSALES HABILITADAS -->
+                    <div class="form-group full-width">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <label>Sucursales Habilitadas *</label>
+                            <label id="wrap-usr-all-branches" style="font-weight:500;font-size:0.85rem;">
+                                <input type="checkbox" id="usr-acceso-todas"> Acceso a todas las sucursales
+                            </label>
+                        </div>
+                        <div id="usr-sucursales-container" class="check-grid"></div>
+                    </div>
+
+                    <!-- PERMISOS GRANULARES POR USUARIO (Regla 1.1 B) -->
+                    <div class="form-group full-width">
+                        <label>Permisos Granulares del Usuario (personalizables además del Rol)</label>
+                        <div id="usr-permisos-container" class="check-grid cols-2"></div>
+                    </div>
+                </div>
+                <div id="modal-usuario-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-usuario-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Empleado</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL BLANQUEO DE CONTRASEÑA POR ADMIN / ENCARGADO -->
+    <div id="modal-reset-pass" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:440px;">
+            <div class="modal-header">
+                <h3>Blanquear Contraseña</h3>
+                <button type="button" id="btn-close-reset-modal" class="btn-icon">✕</button>
+            </div>
+            <p class="subtitle" style="margin-bottom:1rem;">
+                Defina una clave temporal para <strong id="reset-target-username">-</strong>. Al iniciar sesión, el sistema le exigirá elegir una contraseña propia.
+            </p>
+            <form id="form-reset-pass" autocomplete="off">
+                <input type="hidden" id="reset-user-id">
+                <div class="form-group">
+                    <label for="reset-temp-pass">Nueva Contraseña Temporal (mín. 6 caracteres) *</label>
+                    <input type="password" id="reset-temp-pass" required minlength="6" maxlength="128">
+                </div>
+                <div id="modal-reset-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-reset-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar Blanqueo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL AUTORIZACIÓN DE SUPERVISOR EN CAJA (Regla 1.2) -->
+    <div id="modal-supervisor" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:460px;">
+            <div class="modal-header">
+                <h3>🔐 Autorización de Supervisor en Caja</h3>
+                <button type="button" id="btn-close-sup-modal" class="btn-icon">✕</button>
+            </div>
+            <p class="subtitle" style="margin-bottom:1rem;">
+                Permite autorizar una acción restringida ingresando credenciales de un Encargado o Administrador sin cerrar la sesión del cajero actual.
+            </p>
+            <form id="form-supervisor" autocomplete="off">
+                <div class="form-group">
+                    <label for="sup-permiso">Operación a Autorizar *</label>
+                    <select id="sup-permiso" required>
+                        <option value="ANULAR_VENTAS">Anular Venta / Ítem de Ticket</option>
+                        <option value="CAMBIAR_PRECIOS_SUCURSAL">Modificar Precio en Sucursal</option>
+                        <option value="APLICAR_DESCUENTOS_ESPECIALES">Aplicar Descuento Especial</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sup-username">Usuario Supervisor *</label>
+                    <input type="text" id="sup-username" required maxlength="60">
+                </div>
+                <div class="form-group">
+                    <label for="sup-password">Contraseña Supervisor *</label>
+                    <input type="password" id="sup-password" required maxlength="128">
+                </div>
+                <div id="modal-sup-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-sup-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Autorizar Operación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
