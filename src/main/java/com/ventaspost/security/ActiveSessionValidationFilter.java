@@ -12,7 +12,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -30,7 +29,6 @@ import java.util.Optional;
  * sucursal activa en su sesión continúe habilitada.
  */
 @Component
-@RequiredArgsConstructor
 public class ActiveSessionValidationFilter extends OncePerRequestFilter {
 
     private final UsuarioRepository usuarioRepository;
@@ -122,4 +120,12 @@ public class ActiveSessionValidationFilter extends OncePerRequestFilter {
         ApiErrorResponse err = ApiErrorResponse.of(status.value(), errorTitle, message, path);
         response.getWriter().write(objectMapper.writeValueAsString(err));
     }
+
+    public ActiveSessionValidationFilter(UsuarioRepository usuarioRepository, SucursalRepository sucursalRepository, SucursalSessionManager sucursalSessionManager, ObjectMapper objectMapper) {
+        this.usuarioRepository = usuarioRepository;
+        this.sucursalRepository = sucursalRepository;
+        this.sucursalSessionManager = sucursalSessionManager;
+        this.objectMapper = objectMapper;
+    }
+
 }

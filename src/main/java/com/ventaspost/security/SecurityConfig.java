@@ -3,7 +3,6 @@ package com.ventaspost.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ventaspost.common.exception.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -27,7 +26,6 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final ObjectMapper objectMapper;
@@ -99,4 +97,10 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+    public SecurityConfig(ObjectMapper objectMapper, ActiveSessionValidationFilter activeSessionValidationFilter) {
+        this.objectMapper = objectMapper;
+        this.activeSessionValidationFilter = activeSessionValidationFilter;
+    }
+
 }

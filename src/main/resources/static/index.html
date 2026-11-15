@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
+    <!-- BARRA GLOBAL DE CARGA (SPINNER / PROGRESO NO INTRUSIVO) -->
+    <div id="global-loading-bar" class="global-loading-bar"></div>
+
     <!-- NOTIFICACIONES GLOBALES -->
     <div id="toast-container" class="toast-container"></div>
 
@@ -35,7 +38,7 @@
         </div>
     </section>
 
-    <!-- VISTA 1.5: CAMBIO OBLIGATORIO DE CONTRASEÑA (Regla 4.2) -->
+    <!-- VISTA 1.5: CAMBIO OBLIGATORIO DE CONTRASEÑA -->
     <section id="view-change-password" class="auth-wrapper hidden">
         <div class="auth-card">
             <h2>Elegir Nueva Contraseña</h2>
@@ -64,11 +67,11 @@
         </div>
     </section>
 
-    <!-- VISTA 2: SELECCIÓN DE SUCURSAL O VISTA CONSOLIDADA (Reglas 2B y 2.1A) -->
+    <!-- VISTA 2: SELECCIÓN DE SUCURSAL O VISTA CONSOLIDADA -->
     <section id="view-select-sucursal" class="auth-wrapper hidden">
         <div class="auth-card wide">
             <h2>Seleccionar Contexto de Operación</h2>
-            <p class="subtitle">Elija una sucursal específica para operar o active la Vista Consolidada (si está habilitada para su perfil):</p>
+            <p class="subtitle">Elija una sucursal específica para operar o active la Vista Consolidada:</p>
             <div id="sucursales-selector-list" class="branch-grid"></div>
             <div class="auth-footer">
                 <button type="button" id="btn-logout-from-selector" class="btn btn-outline">Cerrar Sesión</button>
@@ -84,11 +87,32 @@
                 <span>VentasPost</span>
             </div>
             <nav class="sidebar-nav">
-                <button class="nav-item active" id="nav-btn-sucursales" data-section="sucursales">
-                    <span>🏢 Sucursales y Datos Fiscales</span>
+                <button class="nav-item active" id="nav-btn-pos" data-section="pos">
+                    <span>🛒 Punto de Venta (POS)</span>
+                </button>
+                <button class="nav-item" id="nav-btn-caja" data-section="caja">
+                    <span>💵 Caja, Arqueo e Historial</span>
+                </button>
+                <button class="nav-item hidden" id="nav-btn-estadisticas" data-section="estadisticas">
+                    <span>📊 Estadísticas y BI</span>
+                </button>
+                <button class="nav-item" id="nav-btn-productos" data-section="productos">
+                    <span>📦 Catálogo y Stock</span>
+                </button>
+                <button class="nav-item" id="nav-btn-proveedores" data-section="proveedores">
+                    <span>🚚 Proveedores</span>
+                </button>
+                <button class="nav-item" id="nav-btn-sucursales" data-section="sucursales">
+                    <span>🏢 Sucursales</span>
+                </button>
+                <button class="nav-item hidden" id="nav-btn-arca" data-section="arca">
+                    <span>🏛️ Configuración ARCA</span>
+                </button>
+                <button class="nav-item hidden" id="nav-btn-sueldos" data-section="sueldos">
+                    <span>⏱️ Horarios y Sueldos</span>
                 </button>
                 <button class="nav-item hidden" id="nav-btn-usuarios" data-section="usuarios">
-                    <span>👥 Usuarios, Roles y Permisos</span>
+                    <span>👥 Usuarios y Permisos</span>
                 </button>
             </nav>
             <div class="sidebar-footer">
@@ -110,14 +134,552 @@
                     <button type="button" id="btn-switch-branch" class="btn btn-outline btn-xs hidden">Cambiar Contexto / Sucursal</button>
                 </div>
                 <div class="topbar-meta">
-                    <button type="button" id="btn-test-supervisor" class="btn btn-outline btn-xs">🔐 Validar Supervisor (POS)</button>
+                    <button type="button" id="btn-fichaje-topbar" class="btn btn-outline btn-xs">🕒 Fichar Entrada</button>
+                    <span id="ui-caja-status-pill" class="status-pill status-inactive">Caja Cerrada</span>
+                    <button type="button" id="btn-test-supervisor" class="btn btn-outline btn-xs">🔐 Validar Supervisor</button>
                     <span>AR (UTC-3)</span>
                 </div>
             </header>
 
             <main class="content-container">
-                <!-- SECCIÓN A: SUCURSALES -->
-                <div id="section-sucursales">
+                <!-- =========================================================
+                     SECCIÓN 0: PUNTO DE VENTA (POS) Y CARRITO (FASE 3)
+                     ========================================================= -->
+                <div id="section-pos">
+                    <!-- Banner de Estado de Turno de Caja -->
+                    <div id="pos-caja-banner" class="pos-caja-banner">
+                        <div id="pos-caja-banner-info">Verificando estado de caja...</div>
+                        <div class="action-group" id="pos-caja-banner-actions"></div>
+                    </div>
+
+                    <div class="pos-layout">
+                        <!-- Columna Izquierda: Lector de Barras/QR + Carrito -->
+                        <div class="pos-left">
+                            <div class="card pos-scanner-card">
+                                <div class="scanner-row">
+                                    <div class="scanner-input-wrap">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.3rem;">
+                                            <label for="pos-scan-input" style="margin-bottom:0;">🔍 Escanear Código de Barras / QR o Buscar Producto</label>
+                                            <div class="pos-kbd-legend">
+                                                <span><kbd>F2</kbd> Buscar</span>
+                                                <span><kbd>F4</kbd> Cobrar</span>
+                                                <span><kbd>ESC</kbd> Cancelar / Cerrar</span>
+                                            </div>
+                                        </div>
+                                        <input type="text" id="pos-scan-input" autocomplete="off"
+                                               placeholder="Escanee código EAN / QR y presione Enter, o escriba nombre/marca...">
+                                        <div id="pos-predictive-dropdown" class="predictive-dropdown hidden"></div>
+                                    </div>
+                                    <div class="scanner-qty-wrap">
+                                        <label for="pos-scan-qty">Cant.</label>
+                                        <input type="number" id="pos-scan-qty" value="1" min="0.001" step="0.001">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card" style="margin-top:0.85rem;">
+                                <div class="pos-cart-header">
+                                    <h3>🛒 Carrito de Venta Actual (<span id="pos-cart-count">0</span> ítems)</h3>
+                                    <button type="button" id="btn-pos-vaciar" class="btn btn-outline btn-xs">🗑️ Vaciar Carrito</button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="data-table compact-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Código / Producto</th>
+                                                <th>Stock Local</th>
+                                                <th>P. Unitario</th>
+                                                <th style="width:105px;">Cantidad</th>
+                                                <th style="width:90px;">% Desc.</th>
+                                                <th>Subtotal</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-pos-cart">
+                                            <tr>
+                                                <td colspan="7" class="text-center" style="padding:2rem;color:#64748b;">
+                                                    El carrito está vacío. Escanee un código de barras/QR o busque un artículo arriba.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna Derecha: Cliente, Descuento, Pagos Combinados y Totales -->
+                        <div class="pos-right">
+                            <div class="card pos-checkout-card">
+                                <h3>Datos del Comprador</h3>
+                                <div class="form-grid" style="margin-top:0.5rem;">
+                                    <div class="form-group">
+                                        <label for="pos-cli-nombre">Cliente / Razón Social</label>
+                                        <input type="text" id="pos-cli-nombre" value="Consumidor Final" maxlength="150">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="pos-cli-doc">DNI / CUIT (Opcional)</label>
+                                        <input type="text" id="pos-cli-doc" placeholder="Para futura factura" maxlength="20">
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <label for="pos-cli-iva">Condición IVA del Comprador</label>
+                                        <select id="pos-cli-iva">
+                                            <option value="CONSUMIDOR_FINAL">Consumidor Final</option>
+                                            <option value="RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto</option>
+                                            <option value="MONOTRIBUTO">Responsable Monotributo</option>
+                                            <option value="EXENTO">IVA Sujeto Exento</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <hr class="divider">
+
+                                <!-- Descuento Global y Supervisor -->
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+                                    <div style="flex:1;">
+                                        <label for="pos-desc-global" style="font-size:0.8rem;font-weight:600;">% Descuento Global Manual</label>
+                                        <input type="number" id="pos-desc-global" min="0" max="100" step="0.01" value="0" style="width:100%;padding:0.4rem;">
+                                    </div>
+                                    <div>
+                                        <button type="button" id="btn-pos-unlock-discount" class="btn btn-outline btn-xs" style="margin-top:1.1rem;">
+                                            🔑 Autorizar Descuento
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="pos-sup-badge" class="hidden" style="font-size:0.76rem;color:#16a34a;font-weight:600;margin-top:0.25rem;"></div>
+
+                                <hr class="divider">
+
+                                <!-- Formas de Pago Combinadas (Reglas 1.1A, 1.2, 1.3, 2.1A) -->
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                                    <h4>Formas de Pago (Simple o Combinado)</h4>
+                                    <div class="action-group">
+                                        <button type="button" id="btn-config-medios-pago" class="btn btn-outline btn-xs hidden" title="Configurar recargos/descuentos por medio de pago">⚙️ % Medios</button>
+                                        <button type="button" id="btn-pos-add-pago" class="btn btn-outline btn-xs">+ Sumar Medio</button>
+                                    </div>
+                                </div>
+
+                                <div id="pos-pagos-container" class="pos-pagos-list"></div>
+
+                                <div class="pos-totals-box">
+                                    <div class="tot-row">
+                                        <span>Subtotal Ítems:</span>
+                                        <strong id="pos-lbl-subtotal">$ 0,00</strong>
+                                    </div>
+                                    <div class="tot-row">
+                                        <span>Descuento Manual Global:</span>
+                                        <strong id="pos-lbl-descuento" style="color:#dc2626;">- $ 0,00</strong>
+                                    </div>
+                                    <div class="tot-row">
+                                        <span>Neto Base a Cubrir:</span>
+                                        <strong id="pos-lbl-neto-base">$ 0,00</strong>
+                                    </div>
+                                    <div class="tot-row">
+                                        <span>Recargo / Desc. Medios Pago:</span>
+                                        <strong id="pos-lbl-ajuste-medios">$ 0,00</strong>
+                                    </div>
+                                    <div class="tot-row" id="pos-row-falta-cubrir">
+                                        <span>Falta Imputar en Pagos:</span>
+                                        <strong id="pos-lbl-falta-cubrir">$ 0,00</strong>
+                                    </div>
+                                    <div class="tot-row grand-total">
+                                        <span>TOTAL FINAL A COBRAR:</span>
+                                        <strong id="pos-lbl-total-final">$ 0,00</strong>
+                                    </div>
+                                    <div class="tot-row vuelto-row hidden" id="pos-row-vuelto">
+                                        <span>💵 VUELTO AL CLIENTE:</span>
+                                        <strong id="pos-lbl-vuelto">$ 0,00</strong>
+                                    </div>
+                                </div>
+
+                                <div id="pos-checkout-error" class="alert-error hidden" style="margin-top:0.75rem;"></div>
+
+                                <button type="button" id="btn-pos-confirmar-venta" class="btn btn-primary btn-block" style="margin-top:0.85rem;padding:0.8rem;font-size:1rem;">
+                                    ✅ Confirmar Venta (Pendiente Facturación) [F4]
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =========================================================
+                     SECCIÓN 0.5: CAJA, ARQUEO POR TURNO E HISTORIAL DE VENTAS (FASE 3)
+                     ========================================================= -->
+                <div id="section-caja" class="hidden">
+                    <div class="page-header">
+                        <div>
+                            <h2>Control de Turno de Caja, Movimientos e Historial de Ventas</h2>
+                            <p>Apertura con fondo fijo, ingresos/retiros manuales, arqueo con diferencia y anulaciones con reintegro de stock.</p>
+                        </div>
+                        <div class="action-group">
+                            <button type="button" id="btn-caja-abrir" class="btn btn-primary hidden">🔓 Abrir Turno de Caja</button>
+                            <button type="button" id="btn-caja-movimiento" class="btn btn-outline hidden">➕/➖ Registrar Ingreso o Retiro</button>
+                            <button type="button" id="btn-caja-cerrar" class="btn btn-primary hidden">🔒 Cerrar y Arquear Caja</button>
+                        </div>
+                    </div>
+
+                    <!-- Resumen del Turno Activo -->
+                    <div id="caja-turno-activo-card" class="card" style="padding:1.25rem;margin-bottom:1.25rem;"></div>
+
+                    <!-- Historial de Ventas Recientes (Estado Realizada / Pendiente de Facturación y Anulaciones) -->
+                    <div class="card" style="margin-bottom:1.25rem;">
+                        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                            <h3>🧾 Ventas Registradas (Estado Realizada / Pendiente de Facturación)</h3>
+                            <select id="flt-ventas-facturacion" style="padding:0.35rem 0.6rem;border:1px solid var(--border);border-radius:6px;">
+                                <option value="">Todas las ventas</option>
+                                <option value="NO_FACTURADA">Pendientes de Facturación (No Facturadas)</option>
+                                <option value="FACTURADA">Facturadas en ARCA (CAE Otorgado)</option>
+                                <option value="ERROR_ARCA">Con Error ARCA (Pendientes de Reintento)</option>
+                                <option value="ANULADA_NOTA_CREDITO">Anuladas con Nota de Crédito ARCA</option>
+                            </select>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Comprobante X</th>
+                                        <th>Fecha / Cajero</th>
+                                        <th>Cliente</th>
+                                        <th>Medios de Pago</th>
+                                        <th>Total Final</th>
+                                        <th>Estado Venta</th>
+                                        <th>Facturación</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-ventas-historial">
+                                    <tr><td colspan="8" class="text-center">Cargando ventas...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Historial de Turnos y Arqueos -->
+                    <div class="card">
+                        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+                            <h3>📋 Historial de Turnos y Arqueos de Caja</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID / Sucursal</th>
+                                        <th>Cajero</th>
+                                        <th>Apertura / Cierre</th>
+                                        <th>Fondo Inicial</th>
+                                        <th>Total Ventas</th>
+                                        <th>Efectivo Esperado</th>
+                                        <th>Efectivo Contado</th>
+                                        <th>Diferencia Arqueo</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-turnos-historial">
+                                    <tr><td colspan="9" class="text-center">Cargando turnos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =========================================================
+                     SECCIÓN 0.8: PANEL ESTADÍSTICO E INTELIGENCIA DE NEGOCIO (FASE 5)
+                     ========================================================= -->
+                <div id="section-estadisticas" class="hidden">
+                    <div class="page-header">
+                        <div>
+                            <h2>📊 Panel Estadístico e Inteligencia de Negocio (BI)</h2>
+                            <p>Análisis de ventas por día/mes/año, margen de ganancia real sobre costo histórico, horas pico, medios de pago y rotación de stock.</p>
+                        </div>
+                        <div class="action-group">
+                            <select id="bi-export-tipo" style="padding:0.42rem 0.6rem;border:1px solid var(--border);border-radius:6px;font-size:0.83rem;">
+                                <option value="VENTAS_DETALLE">Excel: Detalle de Ventas y Márgenes</option>
+                                <option value="RANKING_PRODUCTOS">Excel: Ranking de Productos Vendidos</option>
+                                <option value="COMPROBANTES_ARCA">Excel: Libro IVA / Comprobantes ARCA</option>
+                                <option value="STOCK_INMOVILIZADO">Excel: Stock Inmovilizado / Sin Rotación</option>
+                            </select>
+                            <button type="button" id="btn-bi-export-csv" class="btn btn-outline btn-sm">📥 Exportar Excel (.csv)</button>
+                            <button type="button" id="btn-bi-export-pdf" class="btn btn-primary btn-sm">🖨️ Informe Ejecutivo PDF (A4)</button>
+                        </div>
+                    </div>
+
+                    <!-- Barra de Filtros del Dashboard -->
+                    <div class="card filter-bar" style="margin-bottom:1.15rem;">
+                        <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));">
+                            <div class="filter-item">
+                                <label for="bi-flt-sucursal">Sucursal / Alcance</label>
+                                <select id="bi-flt-sucursal"></select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="bi-flt-desde">Fecha Desde</label>
+                                <input type="date" id="bi-flt-desde">
+                            </div>
+                            <div class="filter-item">
+                                <label for="bi-flt-hasta">Fecha Hasta</label>
+                                <input type="date" id="bi-flt-hasta">
+                            </div>
+                            <div class="filter-item">
+                                <label for="bi-flt-facturacion">Universo Fiscal (Regla 2.1)</label>
+                                <select id="bi-flt-facturacion">
+                                    <option value="TODAS_REALIZADAS">Todas las Ventas Realizadas (Comercial)</option>
+                                    <option value="SOLO_FACTURADAS_ARCA">Solo Facturadas en ARCA (Fiscal CAE)</option>
+                                    <option value="SOLO_NO_FACTURADAS">Solo No Facturadas (Pendientes X)</option>
+                                </select>
+                            </div>
+                            <div class="filter-item" style="display:flex;flex-direction:column;justify-content:flex-end;gap:0.35rem;">
+                                <div class="action-group">
+                                    <button type="button" class="btn btn-outline btn-xs" onclick="aplicarRangoRapidoBi('HOY')">Hoy</button>
+                                    <button type="button" class="btn btn-outline btn-xs" onclick="aplicarRangoRapidoBi('7D')">7 Días</button>
+                                    <button type="button" class="btn btn-outline btn-xs" onclick="aplicarRangoRapidoBi('30D')">30 Días</button>
+                                    <button type="button" class="btn btn-outline btn-xs" onclick="aplicarRangoRapidoBi('MES')">Mes</button>
+                                    <button type="button" class="btn btn-primary btn-xs" id="btn-bi-actualizar">🔄 Consultar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contenedor imprimible del Dashboard Ejecutivo -->
+                    <div id="bi-printable-area">
+                        <!-- Fila 1: KPIs Obligatorios (Día, Mes, Año y Período) + Margen Real + Inventario -->
+                        <div id="bi-kpis-grid" class="bi-kpi-grid"></div>
+
+                        <!-- Fila 2: Evolución Temporal (Diaria / Mensual) y Distribución por Medio de Pago -->
+                        <div class="bi-two-cols" style="margin-top:1.15rem;">
+                            <div class="card" style="padding:1.15rem;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+                                    <h3 id="bi-chart-evolucion-title">📈 Evolución de Ventas y Rentabilidad</h3>
+                                    <div class="action-group">
+                                        <button type="button" id="btn-bi-evo-dia" class="btn btn-primary btn-xs">Por Día (Período)</button>
+                                        <button type="button" id="btn-bi-evo-mes" class="btn btn-outline btn-xs">Por Mes (Anual)</button>
+                                    </div>
+                                </div>
+                                <div id="bi-chart-evolucion" class="bi-chart-box"></div>
+                            </div>
+
+                            <div class="card" style="padding:1.15rem;">
+                                <h3 style="margin-bottom:0.85rem;">💳 Distribución de Ingresos por Forma de Pago</h3>
+                                <div id="bi-chart-medios-pago"></div>
+                            </div>
+                        </div>
+
+                        <!-- Fila 3: Ranking de Productos Más Vendidos (Por Unidades vs Por Facturación) y Horas Pico -->
+                        <div class="bi-two-cols" style="margin-top:1.15rem;">
+                            <div class="card" style="padding:1.15rem;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+                                    <h3>🏆 Ranking Top Productos Más Vendidos</h3>
+                                    <div class="action-group">
+                                        <button type="button" id="btn-bi-rank-fact" class="btn btn-primary btn-xs">Por Facturación ($)</button>
+                                        <button type="button" id="btn-bi-rank-unid" class="btn btn-outline btn-xs">Por Unidades</button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="data-table compact-table">
+                                        <thead>
+                                            <tr id="thead-bi-ranking-productos"></tr>
+                                        </thead>
+                                        <tbody id="tbody-bi-ranking-productos"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="card" style="padding:1.15rem;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+                                    <h3>⏰ Mapa de Horas Pico y Flujo Semanal</h3>
+                                    <div class="action-group">
+                                        <button type="button" id="btn-bi-flujo-hora" class="btn btn-primary btn-xs">Por Hora (00-23h)</button>
+                                        <button type="button" id="btn-bi-flujo-dia" class="btn btn-outline btn-xs">Por Día de Semana</button>
+                                    </div>
+                                </div>
+                                <div id="bi-chart-horas-pico" class="bi-chart-box"></div>
+                            </div>
+                        </div>
+
+                        <!-- Fila 4: Rentabilidad por Categoría / Proveedor / Sucursal y Rendimiento de Vendedores -->
+                        <div class="bi-two-cols" style="margin-top:1.15rem;">
+                            <div class="card" style="padding:1.15rem;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+                                    <h3>📂 Rentabilidad por Categoría, Proveedor y Sucursal</h3>
+                                    <div class="action-group">
+                                        <button type="button" id="btn-bi-rubro-cat" class="btn btn-primary btn-xs">Categorías</button>
+                                        <button type="button" id="btn-bi-rubro-prov" class="btn btn-outline btn-xs">Proveedores</button>
+                                        <button type="button" id="btn-bi-rubro-suc" class="btn btn-outline btn-xs">Sucursales</button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="data-table compact-table">
+                                        <thead>
+                                            <tr id="thead-bi-rubros"></tr>
+                                        </thead>
+                                        <tbody id="tbody-bi-rubros"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="card" style="padding:1.15rem;">
+                                <h3 style="margin-bottom:0.85rem;">👤 Rendimiento por Cajero / Vendedor y Anulaciones</h3>
+                                <div class="table-responsive">
+                                    <table class="data-table compact-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Operador</th>
+                                                <th style="text-align:right;">Ventas</th>
+                                                <th style="text-align:right;">Total Facturado</th>
+                                                <th style="text-align:right;">Ticket Prom.</th>
+                                                <th style="text-align:right;">Anulaciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-bi-vendedores"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fila 5: Alerta de Stock Inmovilizado / Productos Sin Rotación en el Período -->
+                        <div class="card" style="padding:1.15rem;margin-top:1.15rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+                                <div>
+                                    <h3>📦 Productos con Stock Inmovilizado (Sin Rotación en el Período Seleccionado)</h3>
+                                    <p class="subtitle">Artículos con existencias positivas en góndola/depósito que registraron 0 ventas en el rango filtrado.</p>
+                                </div>
+                                <span id="bi-badge-sin-rotacion" class="status-pill status-locked">0 artículos</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table compact-table">
+                                    <thead>
+                                        <tr id="thead-bi-sin-rotacion"></tr>
+                                    </thead>
+                                    <tbody id="tbody-bi-sin-rotacion"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =========================================================
+                     SECCIÓN 1: PANEL DE CATÁLOGO DE PRODUCTOS Y STOCK (FASE 2)
+                     ========================================================= -->
+                <div id="section-productos" class="hidden">
+                    <div class="page-header">
+                        <div>
+                            <h2>Catálogo de Productos y Control de Stock por Sucursal</h2>
+                            <p>Búsqueda instantánea, alerta de bajo stock, márgenes e impresión de etiquetas Código de Barras / QR.</p>
+                        </div>
+                        <div class="action-group">
+                            <button type="button" id="btn-aumento-masivo" class="btn btn-outline hidden">📈 Actualización Masiva Precios</button>
+                            <button type="button" id="btn-nuevo-producto" class="btn btn-primary hidden">+ Nuevo Producto</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-bar card">
+                        <div class="filter-grid">
+                            <div class="filter-item search-box">
+                                <label for="flt-prod-q">Búsqueda Instantánea</label>
+                                <input type="text" id="flt-prod-q" placeholder="Buscar por código de barras, SKU, nombre o marca...">
+                            </div>
+                            <div class="filter-item">
+                                <label for="flt-prod-categoria">Categoría</label>
+                                <select id="flt-prod-categoria">
+                                    <option value="">Todas las categorías</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label for="flt-prod-marca">Marca</label>
+                                <select id="flt-prod-marca">
+                                    <option value="">Todas las marcas</option>
+                                </select>
+                            </div>
+                            <div class="filter-item" id="wrap-flt-proveedor">
+                                <label for="flt-prod-proveedor">Proveedor</label>
+                                <select id="flt-prod-proveedor">
+                                    <option value="">Todos los proveedores</option>
+                                </select>
+                            </div>
+                            <div class="filter-item filter-actions">
+                                <label class="low-stock-toggle">
+                                    <input type="checkbox" id="flt-prod-bajo-stock">
+                                    <span>⚠️ Solo Bajo Stock (<b id="badge-count-bajo-stock">0</b>)</span>
+                                </label>
+                                <button type="button" id="btn-limpiar-filtros-prod" class="btn btn-outline btn-xs">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top:1rem;">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código / SKU</th>
+                                        <th>Producto / Marca</th>
+                                        <th>Categoría / Proveedor</th>
+                                        <th id="th-prod-costo">Costo / Ganancia</th>
+                                        <th>Precio Venta</th>
+                                        <th>Stock (<span id="th-stock-context-label">Sucursal</span>)</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-productos">
+                                    <tr>
+                                        <td colspan="8" class="text-center">Cargando productos...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =========================================================
+                     SECCIÓN 2: PANEL DE PROVEEDORES (FASE 2)
+                     ========================================================= -->
+                <div id="section-proveedores" class="hidden">
+                    <div class="page-header">
+                        <div>
+                            <h2>Panel de Proveedores</h2>
+                            <p>Administración de proveedores comerciales, CUIT, condición IVA y datos de contacto.</p>
+                        </div>
+                        <button type="button" id="btn-nuevo-proveedor" class="btn btn-primary">+ Nuevo Proveedor</button>
+                    </div>
+
+                    <div class="filter-bar card" style="margin-bottom:1rem;">
+                        <div class="filter-grid" style="grid-template-columns: 1fr auto;">
+                            <div class="filter-item">
+                                <input type="text" id="flt-prov-q" placeholder="Buscar proveedor por razón social, nombre de fantasía, código o CUIT...">
+                            </div>
+                            <div class="filter-item" style="display:flex;align-items:center;">
+                                <span id="prov-count-label" style="font-size:0.85rem;color:#64748b;">0 proveedores</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Razón Social / Fantasía</th>
+                                        <th>CUIT / Condición IVA</th>
+                                        <th>Teléfono / Email</th>
+                                        <th>Dirección / Localidad</th>
+                                        <th>Observaciones</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-proveedores">
+                                    <tr>
+                                        <td colspan="8" class="text-center">Cargando proveedores...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =========================================================
+                     SECCIÓN 3: SUCURSALES
+                     ========================================================= -->
+                <div id="section-sucursales" class="hidden">
                     <div class="page-header">
                         <div>
                             <h2>Gestión de Sucursales y Configuración Fiscal (ARCA)</h2>
@@ -151,7 +713,126 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN B: USUARIOS, ROLES Y PERMISOS GRANULARES -->
+                <!-- =========================================================
+                     SECCIÓN 3.5: PANEL DE CONFIGURACIÓN FISCAL ARCA (FASE 4 - SOLO ADMIN)
+                     ========================================================= -->
+                <div id="section-arca" class="hidden">
+                    <div class="page-header">
+                        <div>
+                            <h2>🏛️ Panel de Configuración Fiscal y Facturación Electrónica ARCA</h2>
+                            <p>Gestión de Certificados Digitales (.crt), Claves Privadas (.key), Condición IVA, Puntos de Venta y Entorno WSAA / WSFEv1.</p>
+                        </div>
+                        <div class="action-group">
+                            <button type="button" id="btn-arca-probar-wsaa" class="btn btn-outline">🔌 Probar Conexión WSAA / Homologación</button>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+                            <div style="flex:1;min-width:260px;">
+                                <label for="arca-cfg-sucursal-select" style="font-weight:700;display:block;margin-bottom:0.35rem;">Seleccionar Sucursal a Configurar:</label>
+                                <select id="arca-cfg-sucursal-select" style="width:100%;padding:0.55rem;border:1px solid var(--border);border-radius:6px;font-weight:600;"></select>
+                            </div>
+                            <div id="arca-cfg-status-badges" style="display:flex;gap:0.5rem;flex-wrap:wrap;"></div>
+                        </div>
+
+                        <form id="form-config-arca" autocomplete="off">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="arca-razon-social">Razón Social del Emisor *</label>
+                                    <input type="text" id="arca-razon-social" required maxlength="160">
+                                </div>
+                                <div class="form-group">
+                                    <label for="arca-cuit">CUIT Emisor (11 dígitos) *</label>
+                                    <input type="text" id="arca-cuit" required maxlength="13" placeholder="30-12345678-9">
+                                </div>
+                                <div class="form-group">
+                                    <label for="arca-pv">Punto de Venta Electrónico ARCA *</label>
+                                    <input type="number" id="arca-pv" required min="1" max="99999">
+                                </div>
+                                <div class="form-group">
+                                    <label for="arca-condicion-iva">Condición frente al IVA del Comercio *</label>
+                                    <select id="arca-condicion-iva" required>
+                                        <option value="RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto (Emite Factura A y B / NC A y B)</option>
+                                        <option value="MONOTRIBUTO">Responsable Monotributo (Emite Factura C / NC C)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="arca-iibb">N° Ingresos Brutos</label>
+                                    <input type="text" id="arca-iibb" maxlength="50" placeholder="Ej: 901-123456-1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="arca-inicio-act">Fecha de Inicio de Actividades</label>
+                                    <input type="date" id="arca-inicio-act">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="arca-domicilio">Domicilio Comercial Fiscal *</label>
+                                    <input type="text" id="arca-domicilio" required maxlength="220">
+                                </div>
+
+                                <div class="pricing-box full-width">
+                                    <h4>🌐 Entorno de Web Services ARCA (WSAA y WSFEv1) y Parámetros Operativos</h4>
+                                    <div class="form-grid" style="margin-top:0.65rem;">
+                                        <div class="form-group">
+                                            <label for="arca-entorno">Entorno de Operación *</label>
+                                            <select id="arca-entorno" required>
+                                                <option value="HOMOLOGACION">HOMOLOGACIÓN / TESTING (wsaahomo / wswhomo)</option>
+                                                <option value="PRODUCCION">PRODUCCIÓN FISCAL REAL (wsaa / servicios1)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" id="wrap-arca-simulador">
+                                            <label style="display:block;margin-bottom:0.35rem;">Modo de Homologación</label>
+                                            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.86rem;cursor:pointer;">
+                                                <input type="checkbox" id="arca-simulador-activo" checked>
+                                                <span>Activar <b>Simulador Local Asistido de Homologación</b> (permite emitir CAE de prueba y QR oficial sin certificado .crt/.key)</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="arca-tope-cf">Monto Tope Consumidor Final sin DNI ($) *</label>
+                                            <input type="number" id="arca-tope-cf" required min="0" step="0.01" value="344488.00">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="arca-plazo-dias">Plazo Máximo para Facturar Ventas Realizadas (días, 0=sin límite) *</label>
+                                            <input type="number" id="arca-plazo-dias" required min="0" max="3650" value="30">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pricing-box full-width">
+                                    <h4>🔐 Certificado Digital X.509 (.crt) y Clave Privada (.key)</h4>
+                                    <div id="arca-cert-summary-box" style="margin:0.5rem 0 0.85rem;font-size:0.85rem;color:#334155;"></div>
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label for="arca-file-crt">Subir archivo Certificado Digital (.crt / .pem)</label>
+                                            <input type="file" id="arca-file-crt" accept=".crt,.pem,.cer,.txt">
+                                            <textarea id="arca-pem-crt" rows="3" placeholder="O pegue aquí el contenido -----BEGIN CERTIFICATE-----" style="margin-top:0.35rem;font-family:monospace;font-size:0.75rem;"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="arca-file-key">Subir archivo Clave Privada (.key / .pem)</label>
+                                            <input type="file" id="arca-file-key" accept=".key,.pem,.txt">
+                                            <textarea id="arca-pem-key" rows="3" placeholder="O pegue aquí el contenido -----BEGIN PRIVATE KEY-----" style="margin-top:0.35rem;font-family:monospace;font-size:0.75rem;"></textarea>
+                                        </div>
+                                        <div class="form-group full-width">
+                                            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.86rem;cursor:pointer;">
+                                                <input type="checkbox" id="arca-copiar-mismo-cuit" checked>
+                                                <span>Copiar/compartir automáticamente el Certificado (.crt) y Clave Privada (.key) con las demás sucursales que operen bajo el mismo CUIT</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="arca-config-error" class="alert-error hidden" style="margin-top:0.75rem;"></div>
+                            <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1rem;">
+                                <button type="submit" class="btn btn-primary">💾 Guardar Configuración ARCA de la Sucursal</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- =========================================================
+                     SECCIÓN 4: USUARIOS, ROLES Y PERMISOS GRANULARES
+                     ========================================================= -->
                 <div id="section-usuarios" class="hidden">
                     <div class="page-header">
                         <div>
@@ -184,7 +865,964 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- =========================================================
+                     SECCIÓN 5: HORARIOS, ASISTENCIAS Y LIQUIDACIÓN DE SUELDOS (FASE 6)
+                     ========================================================= -->
+                <div id="section-sueldos" class="hidden">
+                    <div class="page-header">
+                        <div>
+                            <h2>⏱️ Asignación de Horarios, Fichaje y Liquidación de Sueldos por Hora</h2>
+                            <p>Gestión integral de tarifas por hora, grilla semanal de turnos, validación de horas reales/extras, adelantos y emisión de recibos de sueldo.</p>
+                        </div>
+                        <div class="action-group" style="gap:0.45rem;flex-wrap:wrap;">
+                            <button type="button" class="btn btn-primary btn-sm sueldos-tab-btn" data-tab="liquidacion">💰 Liquidación y Recibos</button>
+                            <button type="button" class="btn btn-outline btn-sm sueldos-tab-btn" data-tab="asistencias">📅 Asistencias y Jornadas</button>
+                            <button type="button" class="btn btn-outline btn-sm sueldos-tab-btn" data-tab="horarios">🕒 Horarios y Adelantos</button>
+                            <button type="button" class="btn btn-outline btn-sm sueldos-tab-btn" data-tab="tarifas">⚙️ Tarifas Hora y Recargos</button>
+                        </div>
+                    </div>
+
+                    <!-- SUB-TAB 1: LIQUIDACIÓN DE SUELDOS E HISTORIAL DE RECIBOS -->
+                    <div id="sueldos-panel-liquidacion">
+                        <div class="card" style="padding:1.25rem;margin-bottom:1.1rem;">
+                            <h3 style="margin-bottom:0.85rem;">🧮 Calculadora de Liquidación de Sueldo por Hora</h3>
+                            <div class="filter-grid" style="grid-template-columns: 1.5fr 1fr 1fr 1fr auto;align-items:end;gap:0.75rem;">
+                                <div class="filter-item">
+                                    <label for="liq-usuario-select">Empleado a Liquidar *</label>
+                                    <select id="liq-usuario-select"></select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="liq-sucursal-select">Sucursal Emisora *</label>
+                                    <select id="liq-sucursal-select"></select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="liq-fecha-desde">Período Desde *</label>
+                                    <input type="date" id="liq-fecha-desde">
+                                </div>
+                                <div class="filter-item">
+                                    <label for="liq-fecha-hasta">Fecha Liquidación / Hasta *</label>
+                                    <input type="date" id="liq-fecha-hasta">
+                                </div>
+                                <div class="filter-item">
+                                    <button type="button" id="btn-liq-calcular" class="btn btn-primary">🔄 Calcular Horas</button>
+                                </div>
+                            </div>
+
+                            <!-- Resumen de Preliquidación -->
+                            <div id="liq-preview-container" class="hidden" style="margin-top:1.15rem;border-top:1px solid var(--border);padding-top:1rem;">
+                                <div class="bi-kpi-grid" id="liq-kpi-summary" style="margin-bottom:1rem;"></div>
+
+                                <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:1rem;align-items:start;">
+                                    <!-- Detalle de Jornadas y Adelantos Incluidos -->
+                                    <div class="pricing-box" style="margin:0;">
+                                        <h4>📋 Jornadas Pendientes Incluidas en el Período (<span id="liq-jornadas-count">0</span>)</h4>
+                                        <div class="table-responsive" style="max-height:220px;overflow-y:auto;margin-top:0.5rem;">
+                                            <table class="data-table compact-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Fecha</th>
+                                                        <th>Sucursal</th>
+                                                        <th>Normales</th>
+                                                        <th>Extras</th>
+                                                        <th>Feriado</th>
+                                                        <th>Nocturnas</th>
+                                                        <th>Total Hs</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tbody-liq-pre-jornadas"></tbody>
+                                            </table>
+                                        </div>
+
+                                        <div style="margin-top:0.85rem;">
+                                            <label style="display:flex;align-items:center;gap:0.45rem;font-weight:700;font-size:0.86rem;cursor:pointer;">
+                                                <input type="checkbox" id="liq-chk-descontar-adelantos" checked>
+                                                <span>Descontar automáticamente Adelantos / Vales pendientes (<span id="liq-adelantos-pend-label">$0,00</span>)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Conceptos Manuales (Bonos / Premios / Descuentos) y Cierre -->
+                                    <div class="pricing-box" style="margin:0;">
+                                        <h4>➕/➖ Conceptos Manuales (Premios, Viáticos, Presentismo o Descuentos)</h4>
+                                        <div style="display:grid;grid-template-columns:130px 1fr 110px auto;gap:0.45rem;margin-top:0.5rem;">
+                                            <select id="liq-cm-tipo">
+                                                <option value="HABER_ADICIONAL">+ Bono / Haber</option>
+                                                <option value="DESCUENTO_MANUAL">- Descuento</option>
+                                            </select>
+                                            <input type="text" id="liq-cm-desc" placeholder="Ej: Premio puntualidad / Viático">
+                                            <input type="number" id="liq-cm-monto" min="1" step="0.01" placeholder="Monto $">
+                                            <button type="button" id="btn-liq-add-concepto" class="btn btn-outline btn-sm">Agregar</button>
+                                        </div>
+                                        <div id="liq-conceptos-manuales-list" style="margin-top:0.65rem;"></div>
+
+                                        <div class="form-grid" style="margin-top:0.85rem;">
+                                            <div class="form-group">
+                                                <label for="liq-medio-pago">Medio de Pago del Sueldo *</label>
+                                                <select id="liq-medio-pago">
+                                                    <option value="EFECTIVO">Efectivo</option>
+                                                    <option value="TRANSFERENCIA">Transferencia Bancaria / CBU</option>
+                                                    <option value="MIXTO">Mixto (Efectivo + Transferencia)</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="liq-observaciones">Observaciones del Recibo</label>
+                                                <input type="text" id="liq-observaciones" maxlength="280" placeholder="Opcional">
+                                            </div>
+                                        </div>
+
+                                        <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;padding:0.85rem 1rem;border-radius:8px;margin-top:0.75rem;">
+                                            <div>
+                                                <div style="font-size:0.76rem;color:#94a3b8;text-transform:uppercase;">Neto Final a Pagar al Empleado</div>
+                                                <div id="liq-neto-final-big" style="font-size:1.45rem;font-weight:800;color:#4ade80;">$0,00</div>
+                                            </div>
+                                            <button type="button" id="btn-liq-emitir-cerrar" class="btn btn-primary">✅ Cerrar y Emitir Recibo (PAGADA)</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Historial de Liquidaciones Emitidas -->
+                        <div class="card">
+                            <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                                <h3>📜 Historial de Liquidaciones Emitidas y Recibos de Sueldo</h3>
+                                <div style="display:flex;gap:0.5rem;align-items:center;">
+                                    <select id="flt-liq-hist-usuario" style="padding:0.4rem;border:1px solid var(--border);border-radius:6px;">
+                                        <option value="">Todos los empleados</option>
+                                    </select>
+                                    <button type="button" id="btn-refresh-liq-hist" class="btn btn-outline btn-xs">🔄 Actualizar</button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>N° Recibo</th>
+                                            <th>Fecha Liq.</th>
+                                            <th>Empleado / Legajo</th>
+                                            <th>Período Liquidado</th>
+                                            <th>Total Horas</th>
+                                            <th>Valor Hora Base</th>
+                                            <th>Haberes + Bonos</th>
+                                            <th>Adelantos / Desc.</th>
+                                            <th>Neto Pagado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody-liquidaciones-hist">
+                                        <tr><td colspan="10" class="text-center">Cargando liquidaciones...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-TAB 2: ASISTENCIAS, FICHAJES Y GENERACIÓN DESDE HORARIOS TEÓRICOS -->
+                    <div id="sueldos-panel-asistencias" class="hidden">
+                        <div class="card" style="padding:1.1rem;margin-bottom:1rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.85rem;">
+                                <div>
+                                    <h3 style="margin:0;">⚡ Generación Automática desde Horarios Teóricos y Carga de Jornadas</h3>
+                                    <p style="font-size:0.82rem;color:#64748b;margin:0.15rem 0 0;">
+                                        Genere las jornadas del período según los horarios semanales asignados o cargue/edite asistencias, horas extras e inasistencias manualmente.
+                                    </p>
+                                </div>
+                                <div class="action-group">
+                                    <button type="button" id="btn-generar-jornadas-teoricas" class="btn btn-outline btn-sm">⚙️ Generar Jornadas desde Horarios Asignados</button>
+                                    <button type="button" id="btn-nueva-asistencia-manual" class="btn btn-primary btn-sm">+ Registrar Jornada / Inasistencia Manual</button>
+                                </div>
+                            </div>
+
+                            <div class="filter-grid" style="grid-template-columns: 1.4fr 1fr 1fr auto;align-items:end;gap:0.75rem;">
+                                <div class="filter-item">
+                                    <label for="flt-asist-usuario">Empleado</label>
+                                    <select id="flt-asist-usuario">
+                                        <option value="">Todos los empleados</option>
+                                    </select>
+                                </div>
+                                <div class="filter-item">
+                                    <label for="flt-asist-desde">Desde Fecha</label>
+                                    <input type="date" id="flt-asist-desde">
+                                </div>
+                                <div class="filter-item">
+                                    <label for="flt-asist-hasta">Hasta Fecha</label>
+                                    <input type="date" id="flt-asist-hasta">
+                                </div>
+                                <div class="filter-item">
+                                    <button type="button" id="btn-filtrar-asistencias" class="btn btn-outline">🔍 Filtrar Jornadas</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table class="data-table compact-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Empleado</th>
+                                            <th>Sucursal</th>
+                                            <th>Origen / Estado</th>
+                                            <th>Horario / Fichaje</th>
+                                            <th>Hs Normales</th>
+                                            <th>Hs Extras</th>
+                                            <th>Hs Feriado</th>
+                                            <th>Hs Nocturnas</th>
+                                            <th>Total Hs</th>
+                                            <th>Liquidación</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody-asistencias">
+                                        <tr><td colspan="12" class="text-center">Cargando jornadas...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-TAB 3: GRILLA DE HORARIOS SEMANALES ASIGNADOS Y ADELANTOS DE SUELDO -->
+                    <div id="sueldos-panel-horarios" class="hidden">
+                        <div class="bi-charts-row" style="grid-template-columns: 1.15fr 1fr;">
+                            <!-- Asignación de Horarios Semanales -->
+                            <div class="card" style="padding:1.15rem;">
+                                <h3>🕒 Asignación de Horarios Semanales por Empleado y Sucursal</h3>
+                                <form id="form-nuevo-horario" autocomplete="off" style="margin-top:0.75rem;padding-bottom:0.85rem;border-bottom:1px solid var(--border);">
+                                    <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+                                        <div class="form-group">
+                                            <label for="hor-usuario">Empleado *</label>
+                                            <select id="hor-usuario" required></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="hor-sucursal">Sucursal *</label>
+                                            <select id="hor-sucursal" required></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="hor-dia">Día de Semana *</label>
+                                            <select id="hor-dia" required>
+                                                <option value="1">Lunes</option>
+                                                <option value="2">Martes</option>
+                                                <option value="3">Miércoles</option>
+                                                <option value="4">Jueves</option>
+                                                <option value="5">Viernes</option>
+                                                <option value="6">Sábado</option>
+                                                <option value="7">Domingo</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="hor-entrada">Hora Entrada *</label>
+                                            <input type="time" id="hor-entrada" required value="09:00">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="hor-salida">Hora Salida *</label>
+                                            <input type="time" id="hor-salida" required value="17:00">
+                                        </div>
+                                        <div class="form-group" style="display:flex;align-items:end;">
+                                            <button type="submit" class="btn btn-primary btn-block">+ Asignar Turno</button>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                <div class="table-responsive" style="margin-top:0.75rem;max-height:380px;overflow-y:auto;">
+                                    <table class="data-table compact-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Empleado</th>
+                                                <th>Día</th>
+                                                <th>Sucursal</th>
+                                                <th>Franja Horaria</th>
+                                                <th>Hs Teóricas</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-horarios-asignados"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Adelantos / Vales de Sueldo -->
+                            <div class="card" style="padding:1.15rem;">
+                                <h3>💵 Registro de Adelantos / Vales de Sueldo</h3>
+                                <form id="form-nuevo-adelanto" autocomplete="off" style="margin-top:0.75rem;padding-bottom:0.85rem;border-bottom:1px solid var(--border);">
+                                    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+                                        <div class="form-group">
+                                            <label for="adel-usuario">Empleado *</label>
+                                            <select id="adel-usuario" required></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="adel-sucursal">Sucursal *</label>
+                                            <select id="adel-sucursal" required></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="adel-fecha">Fecha Adelanto *</label>
+                                            <input type="date" id="adel-fecha" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="adel-monto">Monto ($) *</label>
+                                            <input type="number" id="adel-monto" required min="1" step="0.01" placeholder="Ej: 25000">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="adel-medio">Medio de Entrega *</label>
+                                            <select id="adel-medio" required>
+                                                <option value="EFECTIVO">Efectivo</option>
+                                                <option value="TRANSFERENCIA">Transferencia</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="adel-motivo">Concepto / Observación *</label>
+                                            <input type="text" id="adel-motivo" required maxlength="240" placeholder="Ej: Vale adelanto quincenal">
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-block" style="margin-top:0.5rem;">+ Registrar Adelanto de Sueldo</button>
+                                </form>
+
+                                <div class="table-responsive" style="margin-top:0.75rem;max-height:360px;overflow-y:auto;">
+                                    <table class="data-table compact-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Fecha</th>
+                                                <th>Empleado</th>
+                                                <th>Concepto</th>
+                                                <th>Monto</th>
+                                                <th>Estado</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody-adelantos-sueldo"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-TAB 4: CONFIGURACIÓN DE TARIFAS POR HORA Y RECARGOS -->
+                    <div id="sueldos-panel-tarifas" class="hidden">
+                        <form id="form-tarifas-sueldos" autocomplete="off">
+                            <div class="card" style="padding:1.25rem;margin-bottom:1rem;">
+                                <h3>📈 Porcentajes de Recargo Horario (Horas Extras, Feriados y Nocturnidad)</h3>
+                                <div class="form-grid" style="grid-template-columns:repeat(3, 1fr);margin-top:0.75rem;">
+                                    <div class="form-group">
+                                        <label for="cfg-recargo-extra">% Recargo Hora Extra Simple (Default 50%) *</label>
+                                        <input type="number" id="cfg-recargo-extra" required min="0" max="300" step="0.01" value="50.00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cfg-recargo-feriado">% Recargo Feriados / Domingos (Default 100%) *</label>
+                                        <input type="number" id="cfg-recargo-feriado" required min="0" max="300" step="0.01" value="100.00">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cfg-recargo-nocturno">% Adicional Hora Nocturna 21:00 a 06:00 (Default 15%) *</label>
+                                        <input type="number" id="cfg-recargo-nocturno" required min="0" max="300" step="0.01" value="15.00">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bi-charts-row" style="grid-template-columns: 1fr 1.4fr;">
+                                <div class="card" style="padding:1.25rem;">
+                                    <h3>🏷️ Valor Hora General por Categoría / Rol</h3>
+                                    <p style="font-size:0.82rem;color:#64748b;margin-bottom:0.75rem;">
+                                        Se aplica automáticamente a todos los empleados de ese rol que no tengan una tarifa personalizada.
+                                    </p>
+                                    <div id="tarifas-roles-container"></div>
+                                </div>
+
+                                <div class="card" style="padding:1.25rem;">
+                                    <h3>👤 Valor Hora Personalizado por Empleado (Opcional)</h3>
+                                    <p style="font-size:0.82rem;color:#64748b;margin-bottom:0.75rem;">
+                                        Si define un monto mayor a $0, prevalece sobre el valor del rol. Deje vacío o en 0 para usar la tarifa del rol.
+                                    </p>
+                                    <div class="table-responsive" style="max-height:360px;overflow-y:auto;">
+                                        <table class="data-table compact-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Empleado / Legajo</th>
+                                                    <th>Roles</th>
+                                                    <th>Valor Hora Personalizado ($)</th>
+                                                    <th>Tarifa Efectiva Aplicada</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody-tarifas-empleados"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+                                <button type="submit" class="btn btn-primary">💾 Guardar Tarifas por Hora y Porcentajes de Recargo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </main>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MODALES DE CAJA Y VENTAS (FASE 3)
+         ===================================================================== -->
+    <!-- MODAL ABRIR CAJA -->
+    <div id="modal-abrir-caja" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:440px;">
+            <div class="modal-header">
+                <h3>🔓 Apertura de Turno de Caja</h3>
+                <button type="button" id="btn-close-abrir-caja" class="btn-icon">✕</button>
+            </div>
+            <form id="form-abrir-caja" autocomplete="off">
+                <div class="form-group">
+                    <label for="caja-monto-inicial">Monto Inicial en Efectivo / Fondo Fijo ($) *</label>
+                    <input type="number" id="caja-monto-inicial" required min="0" step="0.01" value="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="caja-obs-apertura">Observaciones de Apertura</label>
+                    <input type="text" id="caja-obs-apertura" maxlength="300" placeholder="Ej: Cambio inicial en billetes chicos">
+                </div>
+                <div id="modal-abrir-caja-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-abrir-caja" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar Apertura</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL MOVIMIENTO MANUAL DE CAJA (INGRESO / RETIRO) -->
+    <div id="modal-mov-caja" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:460px;">
+            <div class="modal-header">
+                <h3>➕/➖ Movimiento Manual de Caja</h3>
+                <button type="button" id="btn-close-mov-caja" class="btn-icon">✕</button>
+            </div>
+            <form id="form-mov-caja" autocomplete="off">
+                <div class="form-group">
+                    <label for="mov-caja-tipo">Tipo de Movimiento *</label>
+                    <select id="mov-caja-tipo" required>
+                        <option value="EGRESO">➖ Egreso / Retiro de Efectivo / Gasto</option>
+                        <option value="INGRESO">➕ Ingreso de Cambio / Efectivo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="mov-caja-monto">Monto en Efectivo ($) *</label>
+                    <input type="number" id="mov-caja-monto" required min="0.01" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="mov-caja-motivo">Motivo / Concepto Obligatorio *</label>
+                    <input type="text" id="mov-caja-motivo" required maxlength="255" placeholder="Ej: Retiro parcial a tesorería / Artículos de limpieza">
+                </div>
+                <div id="modal-mov-caja-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-mov-caja" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Movimiento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CIERRE Y ARQUEO DE CAJA (Regla 4.4 A) -->
+    <div id="modal-cerrar-caja" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:540px;">
+            <div class="modal-header">
+                <h3>🔒 Cierre y Arqueo de Turno de Caja</h3>
+                <button type="button" id="btn-close-cerrar-caja" class="btn-icon">✕</button>
+            </div>
+            <div id="arqueo-resumen-esperado" class="pricing-box" style="margin-bottom:1rem;"></div>
+            <form id="form-cerrar-caja" autocomplete="off">
+                <div class="form-group">
+                    <label for="caja-efectivo-declarado">Efectivo Físico Contado en Billetes/Monedas ($) *</label>
+                    <input type="number" id="caja-efectivo-declarado" required min="0" step="0.01">
+                </div>
+                <div id="arqueo-diferencia-preview" style="margin-bottom:0.85rem;font-weight:700;"></div>
+                <div class="form-group">
+                    <label for="caja-obs-cierre">Observaciones de Arqueo / Cierre</label>
+                    <input type="text" id="caja-obs-cierre" maxlength="500" placeholder="Aclaraciones sobre diferencias o billetes entregados">
+                </div>
+                <div id="modal-cerrar-caja-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-cerrar-caja" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar Cierre de Turno</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL ANULAR VENTA (Regla 5.1) -->
+    <div id="modal-anular-venta" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:480px;">
+            <div class="modal-header">
+                <h3>🚫 Anular Venta y Reintegrar Stock</h3>
+                <button type="button" id="btn-close-anular-venta" class="btn-icon">✕</button>
+            </div>
+            <p class="subtitle" style="margin-bottom:1rem;">
+                Se anulará el comprobante <strong id="anular-venta-nro">-</strong>, reintegrando las unidades al stock de la sucursal y descontando el cobro de la caja.
+            </p>
+            <form id="form-anular-venta" autocomplete="off">
+                <input type="hidden" id="anular-venta-id">
+                <div class="form-group">
+                    <label for="anular-venta-motivo">Motivo de Anulación *</label>
+                    <input type="text" id="anular-venta-motivo" required maxlength="300" placeholder="Ej: Error de carga en medio de pago / Devolución inmediata">
+                </div>
+                <div id="wrap-anular-supervisor" class="pricing-box hidden">
+                    <h4>Autorización de Supervisor Requerida</h4>
+                    <div class="form-grid" style="margin-top:0.5rem;">
+                        <div class="form-group">
+                            <label for="anular-sup-user">Usuario Supervisor *</label>
+                            <input type="text" id="anular-sup-user" maxlength="60">
+                        </div>
+                        <div class="form-group">
+                            <label for="anular-sup-pass">Contraseña Supervisor *</label>
+                            <input type="password" id="anular-sup-pass" maxlength="128">
+                        </div>
+                    </div>
+                </div>
+                <div id="modal-anular-venta-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-anular-venta" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background:var(--danger);">Confirmar Anulación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL TICKET / COMPROBANTE INTERNO IMPRIMIBLE (Regla 5.2) -->
+    <div id="modal-ticket-venta" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:440px;">
+            <div class="modal-header">
+                <h3>🧾 Comprobante de Venta</h3>
+                <button type="button" id="btn-close-ticket-modal" class="btn-icon">✕</button>
+            </div>
+            <div id="ticket-print-area" class="ticket-box"></div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-ticket-modal" class="btn btn-outline">Cerrar</button>
+                <button type="button" id="btn-facturar-desde-ticket" class="btn btn-outline hidden">🏛️ Facturar con ARCA</button>
+                <button type="button" id="btn-imprimir-ticket" class="btn btn-primary">🖨️ Imprimir Ticket (80mm)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MODALES DE FACTURACIÓN ELECTRÓNICA ARCA (FASE 4)
+         ===================================================================== -->
+    <!-- MODAL FACTURAR VENTA MEDIANTE ARCA (Reglas 1.1A, 2.1A, 2.2) -->
+    <div id="modal-facturar-arca" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:540px;">
+            <div class="modal-header">
+                <h3>🏛️ Facturar Venta mediante ARCA</h3>
+                <button type="button" id="btn-close-facturar-arca" class="btn-icon">✕</button>
+            </div>
+            <div id="facturar-arca-venta-resumen" class="pricing-box" style="margin-bottom:0.85rem;font-size:0.86rem;"></div>
+            <form id="form-facturar-arca" autocomplete="off">
+                <input type="hidden" id="facturar-arca-venta-id">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="facturar-arca-condicion-iva">Condición frente al IVA del Cliente (Receptor) *</label>
+                        <select id="facturar-arca-condicion-iva" required>
+                            <option value="CONSUMIDOR_FINAL">Consumidor Final (Por defecto)</option>
+                            <option value="RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto</option>
+                            <option value="MONOTRIBUTO">Responsable Monotributo</option>
+                            <option value="EXENTO">IVA Sujeto Exento</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="facturar-arca-doc" id="lbl-facturar-arca-doc">DNI o CUIT del Receptor</label>
+                        <input type="text" id="facturar-arca-doc" maxlength="20" placeholder="Sin guiones (vacío = S/I)">
+                    </div>
+                    <div class="form-group">
+                        <label for="facturar-arca-nombre">Nombre o Razón Social *</label>
+                        <input type="text" id="facturar-arca-nombre" required maxlength="160" value="Consumidor Final">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="facturar-arca-domicilio">Domicilio del Receptor (Opcional)</label>
+                        <input type="text" id="facturar-arca-domicilio" maxlength="220" placeholder="Dirección comercial o particular">
+                    </div>
+                </div>
+                <div id="facturar-arca-tipo-preview" style="margin-top:0.65rem;padding:0.6rem 0.8rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;font-size:0.84rem;color:#1e3a8a;font-weight:600;"></div>
+                <div id="facturar-arca-tope-warning" class="alert-error hidden" style="margin-top:0.65rem;"></div>
+                <div id="modal-facturar-arca-error" class="alert-error hidden" style="margin-top:0.65rem;"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-facturar-arca" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-facturar-arca">⚡ Solicitar CAE y Emitir Comprobante</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL VISTA IMPRIMIBLE COMPROBANTE FISCAL ARCA (TICKET 80MM / HOJA A4 CON QR OFICIAL - Regla 4.2) -->
+    <div id="modal-comprobante-arca" class="modal-backdrop hidden">
+        <div class="modal-card wide" style="max-width:780px;">
+            <div class="modal-header">
+                <h3 id="modal-comp-arca-title">🧾 Comprobante Electrónico ARCA</h3>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button type="button" id="btn-vista-arca-ticket" class="btn btn-outline btn-xs">Formato Ticket 80mm</button>
+                    <button type="button" id="btn-vista-arca-a4" class="btn btn-primary btn-xs">Formato Hoja A4</button>
+                    <button type="button" id="btn-close-comp-arca" class="btn-icon">✕</button>
+                </div>
+            </div>
+            <div id="arca-print-container" class="arca-print-wrapper"></div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-comp-arca" class="btn btn-outline">Cerrar</button>
+                <button type="button" id="btn-imprimir-comp-arca" class="btn btn-primary">🖨️ Imprimir / Guardar PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HISTORIAL DE INTENTOS Y REINTENTO ARCA (Regla 3.2) -->
+    <div id="modal-intentos-arca" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:640px;">
+            <div class="modal-header">
+                <h3>📡 Historial de Comunicación con ARCA</h3>
+                <button type="button" id="btn-close-intentos-arca" class="btn-icon">✕</button>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table compact-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha / Hora</th>
+                            <th>Operación</th>
+                            <th>Modo / Entorno</th>
+                            <th>Resultado</th>
+                            <th>Detalle / CAE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-intentos-arca"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-intentos-arca" class="btn btn-outline">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACIÓN DE RECARGOS / DESCUENTOS POR MEDIO DE PAGO (Regla 2.1 A) -->
+    <div id="modal-config-medios" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>⚙️ Configurar Recargos / Descuentos por Medio de Pago</h3>
+                <button type="button" id="btn-close-medios-modal" class="btn-icon">✕</button>
+            </div>
+            <p class="subtitle" style="margin-bottom:1rem;">
+                Ingrese porcentaje positivo para recargo automático (ej. <code>10</code> para +10%) o negativo para descuento automático (ej. <code>-5</code> para -5% en Efectivo).
+            </p>
+            <div class="table-responsive">
+                <table class="data-table compact-table">
+                    <thead>
+                        <tr>
+                            <th>Medio de Pago</th>
+                            <th>% Ajuste (+Recargo / -Desc.)</th>
+                            <th>Exigir Cupón/Ref.</th>
+                            <th>Activo</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-config-medios"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-medios-modal" class="btn btn-outline">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL CREAR / EDITAR PRODUCTO
+         ===================================================================== -->
+    <div id="modal-producto" class="modal-backdrop hidden">
+        <div class="modal-card wide">
+            <div class="modal-header">
+                <h3 id="modal-producto-title">Nuevo Producto</h3>
+                <button type="button" id="btn-close-producto-modal" class="btn-icon">✕</button>
+            </div>
+            <form id="form-producto" autocomplete="off">
+                <input type="hidden" id="prod-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="prod-codigo-barras">Código de Barras (EAN / Interno) *</label>
+                        <div class="input-with-btn">
+                            <input type="text" id="prod-codigo-barras" required maxlength="60" placeholder="Escanee o genere código interno">
+                            <button type="button" id="btn-generar-ean" class="btn btn-outline btn-sm" title="Generar EAN-13 interno único">⚡ Generar Interno</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="prod-sku">Código SKU / Proveedor (Opcional)</label>
+                        <input type="text" id="prod-sku" maxlength="60" placeholder="Código de catálogo del proveedor">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="prod-nombre">Nombre / Descripción Comercial del Producto *</label>
+                        <input type="text" id="prod-nombre" required maxlength="180" placeholder="Ej: Yerba Mate Selección Especial 1 Kg">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-categoria">Categoría *</label>
+                        <div class="input-with-btn">
+                            <select id="prod-categoria" required></select>
+                            <button type="button" id="btn-quick-categoria" class="btn btn-outline btn-sm" title="Crear nueva categoría">+</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-marca">Marca *</label>
+                        <div class="input-with-btn">
+                            <select id="prod-marca" required></select>
+                            <button type="button" id="btn-quick-marca" class="btn btn-outline btn-sm" title="Crear nueva marca">+</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-proveedor">Proveedor Asociado *</label>
+                        <select id="prod-proveedor" required></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-unidad">Unidad de Medida *</label>
+                        <select id="prod-unidad" required>
+                            <option value="UNIDAD">Unidad (Entero)</option>
+                            <option value="KG">Kilogramo - Kg (Fraccionable)</option>
+                            <option value="GRAMO">Gramo - g (Fraccionable)</option>
+                            <option value="LITRO">Litro - L (Fraccionable)</option>
+                            <option value="METRO">Metro - m (Fraccionable)</option>
+                            <option value="PAR">Par (Entero)</option>
+                            <option value="CAJA">Caja / Pack (Entero)</option>
+                        </select>
+                    </div>
+
+                    <div class="pricing-box full-width">
+                        <h4>Cálculo de Costo, IVA y Precio de Venta General</h4>
+                        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top:0.65rem;">
+                            <div class="form-group">
+                                <label for="prod-precio-compra">Precio de Compra ($) *</label>
+                                <input type="number" id="prod-precio-compra" required min="0" step="0.0001" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="prod-iva-incluido">IVA en Compra *</label>
+                                <select id="prod-iva-incluido">
+                                    <option value="true">IVA Incluido en Costo</option>
+                                    <option value="false">Costo Neto (+ IVA)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="prod-alicuota-iva">Alícuota IVA (%) *</label>
+                                <select id="prod-alicuota-iva">
+                                    <option value="21.00">21% (General)</option>
+                                    <option value="10.50">10.5% (Reducido)</option>
+                                    <option value="27.00">27%</option>
+                                    <option value="0.00">0% / Exento</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="prod-costo-final">Costo Final c/IVA ($)</label>
+                                <input type="text" id="prod-costo-final" readonly style="background:#f1f5f9;font-weight:700;">
+                            </div>
+                            <div class="form-group">
+                                <label for="prod-ganancia">% Ganancia *</label>
+                                <input type="number" id="prod-ganancia" required step="0.01" value="30.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="prod-precio-venta">Precio Venta Final ($) *</label>
+                                <input type="number" id="prod-precio-venta" required min="0.01" step="0.01" value="0.00" style="border-color:#2563eb;font-weight:700;">
+                            </div>
+                        </div>
+                        <div id="wrap-prod-update-branch-prices" class="checkbox-row hidden" style="margin-top:0.35rem;font-size:0.83rem;">
+                            <label><input type="checkbox" id="prod-upd-proporcional" checked> Si cambia el Precio General, ajustar en igual proporción los precios personalizados de sucursales</label>
+                            <label><input type="checkbox" id="prod-reset-precios-suc"> Restablecer todas las sucursales al Precio General</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-stock-min-defecto">Stock Mínimo por Defecto del Producto *</label>
+                        <input type="number" id="prod-stock-min-defecto" required min="0" step="0.001" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label for="prod-descripcion">Notas / Descripción Adicional</label>
+                        <input type="text" id="prod-descripcion" maxlength="500">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Stock Actual, Stock Mínimo y Precio Personalizado por Sucursal</label>
+                        <div class="table-responsive" style="border:1px solid var(--border);border-radius:6px;">
+                            <table class="data-table compact-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sucursal</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mínimo Alerta</th>
+                                        <th>Precio Venta Sucursal (Opcional)</th>
+                                        <th>Ubicación Góndola</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-prod-sucursales-config"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="modal-producto-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-producto-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL ACTUALIZACIÓN MASIVA DE PRECIOS -->
+    <div id="modal-aumento-masivo" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>📈 Actualización Masiva de Precios</h3>
+                <button type="button" id="btn-close-masivo-modal" class="btn-icon">✕</button>
+            </div>
+            <p class="subtitle" style="margin-bottom:1rem;">
+                Aplique aumentos o descuentos porcentuales filtrando por proveedor, categoría y/o marca, con redondeo configurable a gusto del administrador.
+            </p>
+            <form id="form-aumento-masivo" autocomplete="off">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="mas-proveedor">Filtrar por Proveedor</label>
+                        <select id="mas-proveedor">
+                            <option value="">Todos los proveedores</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mas-categoria">Filtrar por Categoría</label>
+                        <select id="mas-categoria">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mas-marca">Filtrar por Marca</label>
+                        <select id="mas-marca">
+                            <option value="">Todas las marcas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mas-porcentaje">Porcentaje de Variación (%) *</label>
+                        <input type="number" id="mas-porcentaje" required step="0.01" placeholder="Ej: 15 para +15%">
+                    </div>
+                    <div class="form-group">
+                        <label for="mas-modo-redondeo">Modo de Redondeo *</label>
+                        <select id="mas-modo-redondeo" required>
+                            <option value="MULTIPLO_SUPERIOR">Hacia Arriba al Múltiplo (Recomendado)</option>
+                            <option value="MULTIPLO_MAS_CERCANO">Al Múltiplo Más Cercano</option>
+                            <option value="MULTIPLO_INFERIOR">Hacia Abajo al Múltiplo</option>
+                            <option value="SIN_REDONDEO">Sin redondeo a múltiplo (2 decimales exactos)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="wrap-mas-multiplo">
+                        <label for="mas-multiplo">Múltiplo de Redondeo Configurable ($) *</label>
+                        <div class="input-with-btn">
+                            <input type="number" id="mas-multiplo" min="0.01" step="0.01" value="10">
+                            <button type="button" class="btn btn-outline btn-xs" onclick="setMultiploMasivo(1)">$1</button>
+                            <button type="button" class="btn btn-outline btn-xs" onclick="setMultiploMasivo(10)">$10</button>
+                            <button type="button" class="btn btn-outline btn-xs" onclick="setMultiploMasivo(50)">$50</button>
+                            <button type="button" class="btn btn-outline btn-xs" onclick="setMultiploMasivo(100)">$100</button>
+                        </div>
+                    </div>
+                    <div class="form-group full-width checkbox-col">
+                        <label><input type="checkbox" id="mas-upd-compra" checked> Actualizar también el Precio de Compra en el mismo porcentaje</label>
+                        <label><input type="checkbox" id="mas-upd-sucursales" checked> Aplicar el aumento también a los precios personalizados de sucursales</label>
+                        <label><input type="checkbox" id="mas-reset-sucursales"> Eliminar precios personalizados de sucursales y unificar al nuevo Precio General</label>
+                    </div>
+                </div>
+                <div id="modal-masivo-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-masivo-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Aplicar Actualización Masiva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL ETIQUETA IMPRIMIBLE CÓDIGO DE BARRAS / QR -->
+    <div id="modal-etiqueta" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:480px;">
+            <div class="modal-header">
+                <h3>🏷️ Etiqueta de Producto (Barras / QR)</h3>
+                <button type="button" id="btn-close-etiqueta-modal" class="btn-icon">✕</button>
+            </div>
+            <div class="checkbox-row" style="margin-bottom:1rem;justify-content:center;">
+                <label><input type="radio" name="etiq-tipo" value="BARRAS" checked onchange="renderizarVistaPreviaEtiqueta()"> Código de Barras</label>
+                <label><input type="radio" name="etiq-tipo" value="QR" onchange="renderizarVistaPreviaEtiqueta()"> Código QR Personalizado</label>
+                <label><input type="checkbox" id="etiq-mostrar-precio" checked onchange="renderizarVistaPreviaEtiqueta()"> Incluir Precio</label>
+            </div>
+            <div id="etiqueta-print-area" class="label-preview-box">
+                <div class="label-title" id="etiq-nombre">-</div>
+                <div class="label-brand" id="etiq-marca">-</div>
+                <div id="etiq-graphic-container" class="label-graphic"></div>
+                <div class="label-code" id="etiq-codigo">-</div>
+                <div class="label-price" id="etiq-precio">$ 0,00</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-etiqueta-modal" class="btn btn-outline">Cerrar</button>
+                <button type="button" id="btn-imprimir-etiqueta" class="btn btn-primary">🖨️ Imprimir Etiqueta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CREAR / EDITAR PROVEEDOR -->
+    <div id="modal-proveedor" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-proveedor-title">Nuevo Proveedor</h3>
+                <button type="button" id="btn-close-proveedor-modal" class="btn-icon">✕</button>
+            </div>
+            <form id="form-proveedor" autocomplete="off">
+                <input type="hidden" id="prov-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="prov-codigo">Código Interno *</label>
+                        <input type="text" id="prov-codigo" required maxlength="30" placeholder="Ej: PROV-001">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-cuit">CUIT (Opcional, validado si se ingresa)</label>
+                        <input type="text" id="prov-cuit" maxlength="13" placeholder="30-12345678-9">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-razon-social">Razón Social *</label>
+                        <input type="text" id="prov-razon-social" required maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-fantasia">Nombre de Fantasía</label>
+                        <input type="text" id="prov-fantasia" maxlength="150">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-condicion-iva">Condición frente al IVA *</label>
+                        <select id="prov-condicion-iva" required>
+                            <option value="RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto</option>
+                            <option value="MONOTRIBUTO">Responsable Monotributo</option>
+                            <option value="EXENTO">IVA Sujeto Exento</option>
+                            <option value="CONSUMIDOR_FINAL">Consumidor Final</option>
+                            <option value="NO_RESPONSABLE">IVA No Responsable</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-telefono">Teléfono</label>
+                        <input type="text" id="prov-telefono" maxlength="60">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-email">Email</label>
+                        <input type="email" id="prov-email" maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-direccion">Dirección</label>
+                        <input type="text" id="prov-direccion" maxlength="255">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-localidad">Localidad</label>
+                        <input type="text" id="prov-localidad" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="prov-provincia">Provincia</label>
+                        <input type="text" id="prov-provincia" maxlength="100">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="prov-observaciones">Observaciones / Días de entrega / Condiciones</label>
+                        <input type="text" id="prov-observaciones" maxlength="500">
+                    </div>
+                </div>
+                <div id="modal-proveedor-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-proveedor-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Proveedor</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -271,7 +1909,7 @@
         </div>
     </div>
 
-    <!-- MODAL CREAR / EDITAR EMPLEADO (Reglas 1.1B, 3.1B, 3.2, 4.1A, 4.2) -->
+    <!-- MODAL CREAR / EDITAR EMPLEADO -->
     <div id="modal-usuario" class="modal-backdrop hidden">
         <div class="modal-card wide">
             <div class="modal-header">
@@ -321,14 +1959,10 @@
                         <label for="usr-fecha-ingreso">Fecha de Ingreso (Opcional)</label>
                         <input type="date" id="usr-fecha-ingreso">
                     </div>
-
-                    <!-- ROLES ACUMULABLES -->
                     <div class="form-group full-width">
                         <label>Roles Asignados (puede seleccionar más de uno) *</label>
                         <div id="usr-roles-container" class="check-grid"></div>
                     </div>
-
-                    <!-- SUCURSALES HABILITADAS -->
                     <div class="form-group full-width">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
                             <label>Sucursales Habilitadas *</label>
@@ -338,8 +1972,6 @@
                         </div>
                         <div id="usr-sucursales-container" class="check-grid"></div>
                     </div>
-
-                    <!-- PERMISOS GRANULARES POR USUARIO (Regla 1.1 B) -->
                     <div class="form-group full-width">
                         <label>Permisos Granulares del Usuario (personalizables además del Rol)</label>
                         <div id="usr-permisos-container" class="check-grid cols-2"></div>
@@ -354,7 +1986,7 @@
         </div>
     </div>
 
-    <!-- MODAL BLANQUEO DE CONTRASEÑA POR ADMIN / ENCARGADO -->
+    <!-- MODAL BLANQUEO DE CONTRASEÑA -->
     <div id="modal-reset-pass" class="modal-backdrop hidden">
         <div class="modal-card" style="max-width:440px;">
             <div class="modal-header">
@@ -379,7 +2011,7 @@
         </div>
     </div>
 
-    <!-- MODAL AUTORIZACIÓN DE SUPERVISOR EN CAJA (Regla 1.2) -->
+    <!-- MODAL AUTORIZACIÓN DE SUPERVISOR EN CAJA -->
     <div id="modal-supervisor" class="modal-backdrop hidden">
         <div class="modal-card" style="max-width:460px;">
             <div class="modal-header">
@@ -393,9 +2025,9 @@
                 <div class="form-group">
                     <label for="sup-permiso">Operación a Autorizar *</label>
                     <select id="sup-permiso" required>
+                        <option value="APLICAR_DESCUENTOS_ESPECIALES">Aplicar Descuento Manual en Carrito</option>
                         <option value="ANULAR_VENTAS">Anular Venta / Ítem de Ticket</option>
                         <option value="CAMBIAR_PRECIOS_SUCURSAL">Modificar Precio en Sucursal</option>
-                        <option value="APLICAR_DESCUENTOS_ESPECIALES">Aplicar Descuento Especial</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -412,6 +2044,84 @@
                     <button type="submit" class="btn btn-primary">Autorizar Operación</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         MODALES DE HORARIOS, ASISTENCIAS Y RECIBO DE SUELDO (FASE 6)
+         ===================================================================== -->
+    <!-- MODAL ALTA / EDICIÓN DE JORNADA O INASISTENCIA -->
+    <div id="modal-asistencia-manual" class="modal-backdrop hidden">
+        <div class="modal-card" style="max-width:560px;">
+            <div class="modal-header">
+                <h3 id="modal-asist-title">📅 Registrar / Validar Jornada de Trabajo</h3>
+                <button type="button" id="btn-close-asist-modal" class="btn-icon">✕</button>
+            </div>
+            <form id="form-asistencia-manual" autocomplete="off">
+                <input type="hidden" id="asist-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="asist-usuario">Empleado *</label>
+                        <select id="asist-usuario" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="asist-sucursal">Sucursal *</label>
+                        <select id="asist-sucursal" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="asist-fecha">Fecha de la Jornada *</label>
+                        <input type="date" id="asist-fecha" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="asist-estado">Estado de la Jornada *</label>
+                        <select id="asist-estado" required>
+                            <option value="TRABAJADA">✅ Trabajada / Presente</option>
+                            <option value="INASISTENCIA_INJUSTIFICADA">❌ Inasistencia Injustificada (0 hs)</option>
+                            <option value="INASISTENCIA_JUSTIFICADA">🏥 Inasistencia Justificada / Licencia (0 hs)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="asist-hs-normales">Horas Normales</label>
+                        <input type="number" id="asist-hs-normales" min="0" max="24" step="0.25" value="8.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="asist-hs-extras">Horas Extras Simples</label>
+                        <input type="number" id="asist-hs-extras" min="0" max="24" step="0.25" value="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="asist-hs-feriado">Horas Feriado / Domingo</label>
+                        <input type="number" id="asist-hs-feriado" min="0" max="24" step="0.25" value="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="asist-hs-nocturnas">Horas Nocturnas (21:00 a 06:00)</label>
+                        <input type="number" id="asist-hs-nocturnas" min="0" max="24" step="0.25" value="0.00">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="asist-observaciones">Observaciones / Motivo</label>
+                        <input type="text" id="asist-observaciones" maxlength="260" placeholder="Ej: Quedó 2 hs extras por recepción de mercadería">
+                    </div>
+                </div>
+                <div id="modal-asist-error" class="alert-error hidden"></div>
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancel-asist-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Jornada</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL RECIBO DE SUELDO INTERNO POR DUPLICADO (IMPRIMIBLE) -->
+    <div id="modal-recibo-sueldo" class="modal-backdrop hidden">
+        <div class="modal-card wide" style="max-width:860px;">
+            <div class="modal-header">
+                <h3>🖨️ Recibo Interno de Liquidación de Sueldo (Original y Duplicado)</h3>
+                <button type="button" id="btn-close-recibo-sueldo" class="btn-icon">✕</button>
+            </div>
+            <div id="recibo-sueldo-print-area" style="max-height:70vh;overflow-y:auto;padding:0.5rem;"></div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cerrar-recibo-sueldo-footer" class="btn btn-outline">Cerrar</button>
+                <button type="button" id="btn-imprimir-recibo-sueldo" class="btn btn-primary">🖨️ Imprimir Recibo por Duplicado (A4)</button>
+            </div>
         </div>
     </div>
 

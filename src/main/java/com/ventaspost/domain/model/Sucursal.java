@@ -2,15 +2,9 @@ package com.ventaspost.domain.model;
 
 import com.ventaspost.common.audit.AuditableEntity;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDate;
 
-@Getter
-@Setter
-@NoArgsConstructor
 @Entity
 @Table(name = "sucursales")
 public class Sucursal extends AuditableEntity {
@@ -67,4 +61,144 @@ public class Sucursal extends AuditableEntity {
 
     @Column(name = "es_casa_central", nullable = false)
     private boolean esCasaCentral = false;
+
+    public Sucursal() {
+    }
+
+    public Long getId() {
+        return this.id;
+    }
+
+    public String getCodigo() {
+        return this.codigo;
+    }
+
+    public String getNombre() {
+        return this.nombre;
+    }
+
+    public String getRazonSocial() {
+        return this.razonSocial;
+    }
+
+    public String getCuit() {
+        return this.cuit;
+    }
+
+    public CondicionIva getCondicionIva() {
+        return this.condicionIva;
+    }
+
+    public Integer getPuntoVentaArca() {
+        return this.puntoVentaArca;
+    }
+
+    public String getIngresosBrutos() {
+        return this.ingresosBrutos;
+    }
+
+    public LocalDate getFechaInicioActividades() {
+        return this.fechaInicioActividades;
+    }
+
+    public String getDireccion() {
+        return this.direccion;
+    }
+
+    public String getLocalidad() {
+        return this.localidad;
+    }
+
+    public String getProvincia() {
+        return this.provincia;
+    }
+
+    public String getTelefono() {
+        return this.telefono;
+    }
+
+    public String getEmail() {
+        return this.email;
+    }
+
+    public boolean isVendeAlPublico() {
+        return this.vendeAlPublico;
+    }
+
+    public boolean isTieneDeposito() {
+        return this.tieneDeposito;
+    }
+
+    public boolean isEsCasaCentral() {
+        return this.esCasaCentral;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public void setRazonSocial(String razonSocial) {
+        this.razonSocial = razonSocial;
+    }
+
+    public void setCuit(String cuit) {
+        this.cuit = cuit;
+    }
+
+    public void setCondicionIva(CondicionIva condicionIva) {
+        this.condicionIva = condicionIva;
+    }
+
+    public void setPuntoVentaArca(Integer puntoVentaArca) {
+        this.puntoVentaArca = puntoVentaArca;
+    }
+
+    public void setIngresosBrutos(String ingresosBrutos) {
+        this.ingresosBrutos = ingresosBrutos;
+    }
+
+    public void setFechaInicioActividades(LocalDate fechaInicioActividades) {
+        this.fechaInicioActividades = fechaInicioActividades;
+    }
+
+    public void setDireccion(String direccion) {
+        this.direccion = direccion;
+    }
+
+    public void setLocalidad(String localidad) {
+        this.localidad = localidad;
+    }
+
+    public void setProvincia(String provincia) {
+        this.provincia = provincia;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setVendeAlPublico(boolean vendeAlPublico) {
+        this.vendeAlPublico = vendeAlPublico;
+    }
+
+    public void setTieneDeposito(boolean tieneDeposito) {
+        this.tieneDeposito = tieneDeposito;
+    }
+
+    public void setEsCasaCentral(boolean esCasaCentral) {
+        this.esCasaCentral = esCasaCentral;
+    }
+
 }

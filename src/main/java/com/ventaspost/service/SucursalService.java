@@ -2,22 +2,28 @@ package com.ventaspost.service;
 
 import com.ventaspost.common.exception.BusinessException;
 import com.ventaspost.common.exception.ResourceNotFoundException;
+import com.ventaspost.domain.model.Producto;
+import com.ventaspost.domain.model.ProductoSucursal;
 import com.ventaspost.domain.model.Sucursal;
+import com.ventaspost.domain.repository.ProductoRepository;
+import com.ventaspost.domain.repository.ProductoSucursalRepository;
 import com.ventaspost.domain.repository.SucursalRepository;
 import com.ventaspost.web.dto.sucursal.SucursalRequestDto;
 import com.ventaspost.web.dto.sucursal.SucursalResponseDto;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class SucursalService {
 
     private final SucursalRepository sucursalRepository;
+    private final ProductoRepository productoRepository;
+    private final ProductoSucursalRepository productoSucursalRepository;
 
     @Transactional(readOnly = true)
     public List<SucursalResponseDto> listarTodas() {
@@ -55,6 +61,19 @@ public class SucursalService {
         sucursal.setActivo(true);
 
         Sucursal guardada = sucursalRepository.save(sucursal);
+
+        // Inicializar existencias en 0 y stock mínimo por defecto del producto para la nueva sucursal
+        List<Producto> productosExistentes = productoRepository.findAll();
+        for (Producto prod : productosExistentes) {
+            ProductoSucursal ps = new ProductoSucursal();
+            ps.setProducto(prod);
+            ps.setSucursal(guardada);
+            ps.setStockActual(BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP));
+            ps.setStockMinimo(prod.getStockMinimoDefecto());
+            ps.setActivo(true);
+            productoSucursalRepository.save(ps);
+        }
+
         return toResponseDto(guardada);
     }
 
@@ -161,4 +180,11 @@ public class SucursalService {
                 s.getUpdatedAt()
         );
     }
+
+    public SucursalService(SucursalRepository sucursalRepository, ProductoRepository productoRepository, ProductoSucursalRepository productoSucursalRepository) {
+        this.sucursalRepository = sucursalRepository;
+        this.productoRepository = productoRepository;
+        this.productoSucursalRepository = productoSucursalRepository;
+    }
+
 }

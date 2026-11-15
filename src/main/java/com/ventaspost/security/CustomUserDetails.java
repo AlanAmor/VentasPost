@@ -4,7 +4,6 @@ import com.ventaspost.domain.model.CodigoRol;
 import com.ventaspost.domain.model.PermisoGranular;
 import com.ventaspost.domain.model.Rol;
 import com.ventaspost.domain.model.Usuario;
-import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,7 +14,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Getter
 public class CustomUserDetails implements UserDetails {
 
     private final Long usuarioId;
@@ -28,6 +26,7 @@ public class CustomUserDetails implements UserDetails {
     private final boolean accesoTodasSucursales;
     private final Set<CodigoRol> codigosRol;
     private final Set<PermisoGranular> permisosEfectivos;
+    private final Set<Long> sucursalesHabilitadasIds;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public CustomUserDetails(Usuario usuario) {
@@ -43,6 +42,11 @@ public class CustomUserDetails implements UserDetails {
                 .filter(Rol::isActivo)
                 .map(Rol::getCodigo)
                 .collect(Collectors.toSet());
+        this.sucursalesHabilitadasIds = usuario.getSucursalesHabilitadas() != null
+                ? usuario.getSucursalesHabilitadas().stream()
+                .map(com.ventaspost.domain.model.Sucursal::getId)
+                .collect(Collectors.toSet())
+                : Set.of();
 
         if (this.codigosRol.contains(CodigoRol.ADMIN)) {
             this.permisosEfectivos = EnumSet.allOf(PermisoGranular.class);
@@ -100,4 +104,41 @@ public class CustomUserDetails implements UserDetails {
     public boolean isEnabled() {
         return activo;
     }
+
+    public Long getUsuarioId() {
+        return this.usuarioId;
+    }
+
+    public String getNombreCompleto() {
+        return this.nombreCompleto;
+    }
+
+    public boolean isActivo() {
+        return this.activo;
+    }
+
+    public boolean isCuentaBloqueada() {
+        return this.cuentaBloqueada;
+    }
+
+    public boolean isRequiereCambioPassword() {
+        return this.requiereCambioPassword;
+    }
+
+    public boolean isAccesoTodasSucursales() {
+        return this.accesoTodasSucursales;
+    }
+
+    public Set<CodigoRol> getCodigosRol() {
+        return this.codigosRol;
+    }
+
+    public Set<PermisoGranular> getPermisosEfectivos() {
+        return this.permisosEfectivos;
+    }
+
+    public Set<Long> getSucursalesHabilitadasIds() {
+        return this.sucursalesHabilitadasIds;
+    }
+
 }

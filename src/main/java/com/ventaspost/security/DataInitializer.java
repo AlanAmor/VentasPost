@@ -8,7 +8,6 @@ import com.ventaspost.domain.model.Usuario;
 import com.ventaspost.domain.repository.RolRepository;
 import com.ventaspost.domain.repository.SucursalRepository;
 import com.ventaspost.domain.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -23,7 +22,6 @@ import java.util.List;
 import java.util.Set;
 
 @Component
-@RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
@@ -64,4 +62,12 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Usuario inicial 'admin' creado exitosamente con rol ADMIN y todos los permisos granulares.");
         }
     }
+
+    public DataInitializer(UsuarioRepository usuarioRepository, RolRepository rolRepository, SucursalRepository sucursalRepository, PasswordEncoder passwordEncoder) {
+        this.usuarioRepository = usuarioRepository;
+        this.rolRepository = rolRepository;
+        this.sucursalRepository = sucursalRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
 }

@@ -4,7 +4,6 @@ import com.ventaspost.service.SucursalService;
 import com.ventaspost.web.dto.sucursal.SucursalRequestDto;
 import com.ventaspost.web.dto.sucursal.SucursalResponseDto;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,7 +14,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/sucursales")
-@RequiredArgsConstructor
 public class SucursalController {
 
     private final SucursalService sucursalService;
@@ -53,4 +51,9 @@ public class SucursalController {
         boolean activo = Boolean.TRUE.equals(body.get("activo"));
         return ResponseEntity.ok(sucursalService.cambiarEstadoActivo(id, activo));
     }
+
+    public SucursalController(SucursalService sucursalService) {
+        this.sucursalService = sucursalService;
+    }
+
 }

@@ -1,19 +1,25 @@
 package com.ventaspost.domain.model;
 
 public enum CondicionIva {
-    RESPONSABLE_INSCRIPTO("IVA Responsable Inscripto"),
-    MONOTRIBUTO("Responsable Monotributo"),
-    EXENTO("IVA Sujeto Exento"),
-    CONSUMIDOR_FINAL("Consumidor Final"),
-    NO_RESPONSABLE("IVA No Responsable");
+    RESPONSABLE_INSCRIPTO("IVA Responsable Inscripto", 1),
+    MONOTRIBUTO("Responsable Monotributo", 6),
+    EXENTO("IVA Sujeto Exento", 4),
+    CONSUMIDOR_FINAL("Consumidor Final", 5),
+    NO_RESPONSABLE("IVA No Responsable", 7);
 
     private final String descripcion;
+    private final int codigoAfipReceptor;
 
-    CondicionIva(String descripcion) {
+    CondicionIva(String descripcion, int codigoAfipReceptor) {
         this.descripcion = descripcion;
+        this.codigoAfipReceptor = codigoAfipReceptor;
     }
 
     public String getDescripcion() {
         return descripcion;
+    }
+
+    public int getCodigoAfipReceptor() {
+        return codigoAfipReceptor;
     }
 }

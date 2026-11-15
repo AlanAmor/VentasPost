@@ -15,7 +15,6 @@ import com.ventaspost.web.dto.auth.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
@@ -33,7 +32,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class AuthSessionService {
 
     private final SecurityContextRepository securityContextRepository;
@@ -378,4 +376,13 @@ public class AuthSessionService {
                 s.isEsCasaCentral()
         );
     }
+
+    public AuthSessionService(SecurityContextRepository securityContextRepository, UsuarioRepository usuarioRepository, SucursalRepository sucursalRepository, SucursalSessionManager sucursalSessionManager, PasswordEncoder passwordEncoder) {
+        this.securityContextRepository = securityContextRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.sucursalRepository = sucursalRepository;
+        this.sucursalSessionManager = sucursalSessionManager;
+        this.passwordEncoder = passwordEncoder;
+    }
+
 }

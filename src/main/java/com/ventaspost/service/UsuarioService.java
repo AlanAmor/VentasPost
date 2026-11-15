@@ -13,7 +13,6 @@ import com.ventaspost.domain.repository.UsuarioRepository;
 import com.ventaspost.security.CustomUserDetails;
 import com.ventaspost.web.dto.auth.SucursalResumenDto;
 import com.ventaspost.web.dto.usuario.*;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class UsuarioService {
 
     private static final Set<CodigoRol> ROLES_INFERIORES_PERMITIDOS_ENCARGADO = EnumSet.of(
@@ -464,4 +462,12 @@ public class UsuarioService {
                 u.getUpdatedAt()
         );
     }
+
+    public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository, SucursalRepository sucursalRepository, PasswordEncoder passwordEncoder) {
+        this.usuarioRepository = usuarioRepository;
+        this.rolRepository = rolRepository;
+        this.sucursalRepository = sucursalRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
 }

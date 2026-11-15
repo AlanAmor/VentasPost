@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +15,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthSessionService authSessionService;
@@ -74,4 +72,9 @@ public class AuthController {
         authSessionService.cerrarSesion(request);
         return ResponseEntity.ok(Map.of("message", "Sesión cerrada correctamente."));
     }
+
+    public AuthController(AuthSessionService authSessionService) {
+        this.authSessionService = authSessionService;
+    }
+
 }

@@ -4,12 +4,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -120,10 +122,24 @@ public class GlobalExceptionHandler {
         ApiErrorResponse response = ApiErrorResponse.of(
                 HttpStatus.CONFLICT.value(),
                 "Conflicto de Integridad de Datos",
-                "Ya existe un registro con los mismos datos únicos (código, CUIT, DNI, email o usuario).",
+                "Ya existe un registro con los mismos datos únicos (código, CUIT, DNI, email o usuario) o posee registros asociados que impiden eliminarlo.",
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler({DataAccessException.class, TransactionSystemException.class})
+    public ResponseEntity<ApiErrorResponse> handleDatabaseAccessException(
+            Exception ex,
+            HttpServletRequest request) {
+        log.error("Error de acceso a base de datos en {}: {}", request.getRequestURI(), ex.getMessage());
+        ApiErrorResponse response = ApiErrorResponse.of(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "Error de Base de Datos",
+                "No se pudo completar la operación en la base de datos. Verifique los datos ingresados o reintente en unos instantes.",
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

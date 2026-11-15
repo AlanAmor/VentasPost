@@ -13,7 +13,9 @@ public enum PermisoGranular {
     AUDITAR_CAJAS_SUCURSAL("Auditar y supervisar cajas de la sucursal", false),
     OPERAR_CAJA_PROPIA("Operar punto de venta y arqueo de caja propia", false),
     GESTIONAR_STOCK_SUCURSAL("Gestionar recepción, ajustes y transferencias de stock", false),
-    GESTIONAR_EMPLEADOS_SUCURSAL("Gestionar empleados de su sucursal (roles inferiores)", false);
+    GESTIONAR_EMPLEADOS_SUCURSAL("Gestionar empleados de su sucursal (roles inferiores)", false),
+    HORARIOS_ASISTENCIAS_GESTIONAR("Asignar horarios semanales y validar asistencias/jornadas", false),
+    SUELDOS_LIQUIDAR("Configurar tarifas horarias, adelantos y emitir liquidaciones de sueldo", true);
 
     private final String descripcion;
     private final boolean exclusivoAdmin;
@@ -42,7 +44,8 @@ public enum PermisoGranular {
                     AUDITAR_CAJAS_SUCURSAL,
                     OPERAR_CAJA_PROPIA,
                     GESTIONAR_STOCK_SUCURSAL,
-                    GESTIONAR_EMPLEADOS_SUCURSAL
+                    GESTIONAR_EMPLEADOS_SUCURSAL,
+                    HORARIOS_ASISTENCIAS_GESTIONAR
             );
             case CAJERO -> EnumSet.of(
                     OPERAR_CAJA_PROPIA

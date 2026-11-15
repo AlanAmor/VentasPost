@@ -4,7 +4,6 @@ import com.ventaspost.security.CustomUserDetails;
 import com.ventaspost.service.UsuarioService;
 import com.ventaspost.web.dto.usuario.*;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,7 +14,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/usuarios")
-@RequiredArgsConstructor
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
@@ -79,4 +77,9 @@ public class UsuarioController {
             @AuthenticationPrincipal CustomUserDetails operador) {
         return ResponseEntity.ok(usuarioService.blanquearPassword(id, dto, operador));
     }
+
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
+
 }

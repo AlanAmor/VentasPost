@@ -1,0 +1,63 @@
+package com.ventaspost.web.dto.arca;
+
+import com.ventaspost.domain.model.CondicionIva;
+import com.ventaspost.domain.model.EntornoArca;
+import com.ventaspost.domain.model.ModoEmisionArca;
+import com.ventaspost.domain.model.TipoComprobanteArca;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+public record ComprobanteFiscalArcaResponseDto(
+        Long id,
+        Long ventaId,
+        String numeroComprobanteInternoVenta,
+        Long sucursalId,
+        String sucursalNombre,
+        Long comprobanteAsociadoId,
+        String comprobanteAsociadoNumeroFormateado,
+        String naturalezaComprobante,
+        TipoComprobanteArca tipoComprobante,
+        String tipoComprobanteDescripcion,
+        Integer codigoAfipComprobante,
+        String letraComprobante,
+        EntornoArca entornoArca,
+        String entornoArcaDescripcion,
+        ModoEmisionArca modoEmision,
+        String modoEmisionDescripcion,
+        String cuitEmisor,
+        String razonSocialEmisor,
+        CondicionIva condicionIvaEmisor,
+        String condicionIvaEmisorDescripcion,
+        String ingresosBrutosEmisor,
+        LocalDate fechaInicioActividadesEmisor,
+        String domicilioComercialEmisor,
+        Integer puntoVenta,
+        Long numeroComprobante,
+        String numeroFormateado,
+        LocalDate fechaEmision,
+        CondicionIva receptorCondicionIva,
+        String receptorCondicionIvaDescripcion,
+        Integer receptorCodigoAfipIva,
+        Integer receptorTipoDocAfip,
+        String receptorTipoDocDescripcion,
+        String receptorNumeroDoc,
+        String receptorNombreRazonSocial,
+        String receptorDomicilio,
+        BigDecimal importeNetoGravado,
+        BigDecimal importeExento,
+        BigDecimal importeIvaTotal,
+        BigDecimal importeIva21,
+        BigDecimal importeIva105,
+        BigDecimal importeIva27,
+        BigDecimal importeIvaContenidoTransparencia,
+        BigDecimal importeTotal,
+        String cae,
+        LocalDate caeFechaVencimiento,
+        String qrUrlOficialArca,
+        String qrBase64Payload,
+        String observacionesArca,
+        String usuarioEmisorUsername,
+        LocalDateTime createdAt
+) {}
