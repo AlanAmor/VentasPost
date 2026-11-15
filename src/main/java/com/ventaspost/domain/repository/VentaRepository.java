@@ -9,19 +9,19 @@ import java.util.List;
 
 public interface VentaRepository extends JpaRepository<Venta, Long> {
 
-    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuarioCajero"})
+    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuario"})
     List<Venta> findBySucursalIdOrderByFechaVentaDesc(Long sucursalId);
 
-    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuarioCajero"})
+    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuario"})
     List<Venta> findByTurnoCajaIdOrderByFechaVentaDesc(Long turnoCajaId);
 
-    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuarioCajero"})
+    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuario"})
     List<Venta> findAllByOrderByFechaVentaDesc();
 
-    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuarioCajero"})
+    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuario"})
     List<Venta> findByFechaVentaBetweenOrderByFechaVentaAsc(LocalDateTime desde, LocalDateTime hasta);
 
-    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuarioCajero"})
+    @EntityGraph(attributePaths = {"sucursal", "turnoCaja", "usuario"})
     List<Venta> findBySucursalIdAndFechaVentaBetweenOrderByFechaVentaAsc(
             Long sucursalId,
             LocalDateTime desde,

@@ -110,7 +110,7 @@ INSERT IGNORE INTO productos (
     (SELECT id FROM categorias WHERE nombre = 'Bazar y Cocina' LIMIT 1),
     (SELECT id FROM marcas WHERE nombre = 'Tramontina' LIMIT 1),
     (SELECT id FROM proveedores WHERE codigo = 'PROV-001' LIMIT 1),
-    'PACK', 14200.0000, TRUE, 21.00, 50.00, 21300.00, 4.000, TRUE, 'SYSTEM'
+    'CAJA', 14200.0000, TRUE, 21.00, 50.00, 21300.00, 4.000, TRUE, 'SYSTEM'
 ),
 (
     '7790011000039', 'ATMA-PE8821', FALSE,
@@ -146,7 +146,7 @@ INSERT IGNORE INTO productos (
     (SELECT id FROM categorias WHERE nombre = 'Alimentos Secos y Granel' LIMIT 1),
     (SELECT id FROM marcas WHERE nombre = 'Genérica' LIMIT 1),
     (SELECT id FROM proveedores WHERE codigo = 'PROV-GEN' LIMIT 1),
-    'KILOGRAMO', 11000.0000, TRUE, 21.00, 50.00, 16500.00, 3.000, TRUE, 'SYSTEM'
+    'KG', 11000.0000, TRUE, 21.00, 50.00, 16500.00, 3.000, TRUE, 'SYSTEM'
 ),
 (
     '7790011000077', 'RIV-A4-84H', FALSE,

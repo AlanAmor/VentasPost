@@ -1178,6 +1178,8 @@ async function cargarSeccionCajaEHistorial() {
         renderizarTablaVentasHistorial(ventas);
         renderizarTablaTurnosHistorial(turnos);
     } catch (err) {
+        renderizarTablaVentasHistorial([]);
+        renderizarTablaTurnosHistorial([]);
         manejarErrorApi(err);
     }
 }
@@ -1718,6 +1720,7 @@ async function cargarVistaProductosCompleta() {
         poblarSelectoresFiltroProductos();
         aplicarFiltrosProductosLocal();
     } catch (err) {
+        renderizarTablaProductos([]);
         manejarErrorApi(err);
     }
 }
@@ -2289,6 +2292,7 @@ async function cargarProveedores() {
         AppState.proveedores = lista;
         aplicarFiltroProveedoresLocal();
     } catch (err) {
+        renderizarTablaProveedores([]);
         manejarErrorApi(err);
     }
 }
@@ -2449,6 +2453,7 @@ async function cargarSucursales() {
         AppState.sucursales = lista;
         renderizarTablaSucursales(lista);
     } catch (err) {
+        renderizarTablaSucursales([]);
         manejarErrorApi(err);
     }
 }
@@ -2616,6 +2621,7 @@ async function cargarUsuarios() {
         AppState.usuarios = lista;
         renderizarTablaUsuarios(lista);
     } catch (err) {
+        renderizarTablaUsuarios([]);
         manejarErrorApi(err);
     }
 }
@@ -3656,6 +3662,11 @@ async function cargarDashboardEstadistico() {
         AppState.dashboardBi = data;
         renderizarDashboardBi();
     } catch (err) {
+        const emptyMsg = `<td colspan="6" class="text-center">No hay datos registrados.</td>`;
+        ['tbody-bi-ranking-productos', 'tbody-bi-rubros', 'tbody-bi-vendedores', 'tbody-bi-sin-rotacion'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = `<tr>${emptyMsg}</tr>`;
+        });
         manejarErrorApi(err);
     }
 }
@@ -4484,7 +4495,7 @@ async function cargarHistorialLiquidaciones() {
             `;
         }).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center">${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center">No hay liquidaciones registradas.</td></tr>`;
     }
 }
 
@@ -4684,7 +4695,7 @@ async function cargarListadoAsistencias() {
             `;
         }).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="12" class="text-center">${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center">No hay jornadas registradas.</td></tr>`;
     }
 }
 
@@ -4844,6 +4855,10 @@ async function cargarHorariosYAdelantos() {
             `).join('');
         }
     } catch (err) {
+        const tbodyH = document.getElementById('tbody-horarios-asignados');
+        const tbodyA = document.getElementById('tbody-adelantos-sueldo');
+        if (tbodyH) tbodyH.innerHTML = `<tr><td colspan="6" class="text-center">Sin horarios asignados.</td></tr>`;
+        if (tbodyA) tbodyA.innerHTML = `<tr><td colspan="6" class="text-center">Sin adelantos registrados.</td></tr>`;
         showToast(err.message);
     }
 }
